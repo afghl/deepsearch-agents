@@ -17,7 +17,7 @@ async def main():
 
     # args = parser.parse_args()
     # q = args.query.strip()
-    q = "why is spx down 10% in last month?"
+    q = "What are the recent policies released by Trump, and how will these policies affect the United States and its neighboring countries?"
 
     conf = RunConfig(
         model_provider=OpenAIProvider(
@@ -29,28 +29,37 @@ async def main():
     )
     context = build_task_context(q)
 
+    planner = Planner()
+    planner.name = "DeepSearch Agent"
+    planner.task_generator_tool_name = "reflect"
+
     async def run_sub_task(
-        self, context: RunContextWrapper[TaskContext], new_task: Task
+        context: RunContextWrapper[TaskContext], new_task: Task
     ) -> None:
         """
         Callback for when a new task is generated.
         """
-        ctx = contextvars.copy_context()
-        Scope.set_current_task_id(new_task.id)
-        await ctx.run(
-            lambda: Runner.run(
-                starting_agent=self,
+        print(f"run_sub_task is call curr_id {Scope.get_current_task_id()}")
+
+        async def set_task_id_and_run():
+            # Set the current task id in the context
+            Scope.set_current_task_id(new_task.id)
+            print(f"Set current task id to {Scope.get_current_task_id()}")
+            p = Planner()
+            p.task_generator_tool_name = "reflect"
+            # Run the new task
+            await Runner.run(
+                starting_agent=p,
                 input=new_task.query,
                 context=context.context,
-                conf=conf,
+                run_config=conf,
             )
-        )
 
-    planner = Planner(
-        name="DeepSearch Manger",
-        task_generator_tool_name="reflect",
-        on_new_task_generated=run_sub_task,
-    )
+        ctx = contextvars.copy_context()
+        print("Running sub task, ctx: {ctx}")
+        await ctx.run(set_task_id_and_run)
+
+    planner.on_new_task_generated = run_sub_task
     result = await Runner.run(
         starting_agent=planner,
         input=q,

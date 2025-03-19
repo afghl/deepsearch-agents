@@ -1,4 +1,5 @@
 import contextvars
+from typing import Callable, Dict, List
 
 
 _current_task_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(

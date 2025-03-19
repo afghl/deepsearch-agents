@@ -1,0 +1,84 @@
+from abc import ABC, abstractmethod
+from typing import Any, Callable, Generic, List, Optional
+from openai import AsyncOpenAI
+from pydantic import BaseModel
+import requests
+import serpapi
+from typing_extensions import TypedDict
+
+from agents import (
+    Agent,
+    FunctionTool,
+    ModelSettings,
+    ModelTracing,
+    OpenAIChatCompletionsModel,
+    RunContextWrapper,
+    function_tool,
+)
+
+from deepsearch_agents._utils import Scope
+from deepsearch_agents.conf import (
+    JINA_API_KEY,
+    OPENAI_API_KEY,
+    OPENAI_BASE_URL,
+    SERPAPI_KEY,
+)
+from deepsearch_agents.context import TaskContext
+from deepsearch_agents.tools._utils import tool_instructions
+
+
+def search_instuctions(ctx: TaskContext) -> str:
+    return f"""
+    - Useful To get external information to answer the question.
+    - Use web search to find relevant information.
+    - Build a search request based on the deep intention behind the original question and the expected answer format
+    - Always prefer a single search request, only add another request if the original question covers multiple aspects or elements and one query is not enough, each request focus on one specific aspect of the original question.
+    """
+
+
+tool_instructions["search"] = search_instuctions
+
+
+class SearchResult(TypedDict):
+    """
+    Search result from SERPAPI
+    """
+
+    title: str
+    link: str
+    snippet: str
+    date: Optional[str] = None
+    source: Optional[str] = None
+
+
+@function_tool(name_override="search")
+def search(
+    ctx: RunContextWrapper[TaskContext], search_queries: List[str]
+) -> list[SearchResult]:
+    """
+    - Perform a search
+
+    Args:
+        search_queries: Always prefer a single request, only add another request if the original question covers multiple aspects or elements and one search request is definitely not enough, each request focus on one specific aspect of the original question. Minimize mutual information between each request. Maximum 3 search requests.
+    """
+
+    if search_queries is None or len(search_queries) == 0:
+        return None
+    res = serpapi.search(
+        q=search_queries[0], engine="google", hl="en", gl="us", api_key=SERPAPI_KEY
+    )
+    res = [
+        SearchResult(
+            title=r["title"],
+            link=r["link"],
+            snippet=r["snippet"],
+            date=r.get("date"),
+            source=r.get("source"),
+        )
+        for r in res["organic_results"][:7]
+    ]  # Return the top 7 results
+    # TODO: a reranker here
+    print(
+        f"Perform Search. queries: {search_queries}, search results: {len(res)}, current_task_id: {Scope.get_current_task_id()}"
+    )
+    return res

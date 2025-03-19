@@ -35,7 +35,7 @@ class Task:
 @dataclass
 class TaskContext:
     origin_query: str
-    final_answer: Answer
+    final_answer: Answer | None = None
     tasks: Dict[str, Task] = field(default_factory=dict)
 
     def __init__(self, task):
