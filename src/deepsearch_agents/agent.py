@@ -71,7 +71,7 @@ def search(
     """
 
     if search_queries is None or len(search_queries) == 0:
-        return
+        return None
     res = serpapi.search(
         q=search_queries[0], engine="google", hl="en", gl="us", api_key=SERPAPI_KEY
     )

@@ -1,7 +1,7 @@
 import contextvars
 
 
-_current_task_id: contextvars.ContextVar[str] = contextvars.ContextVar(
+_current_task_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
     "current_task_id", default=None
 )
 
