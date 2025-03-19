@@ -8,4 +8,5 @@ dependencies = [
     "asyncio>=3.4.3",
     "dotenv>=0.9.9",
     "openai-agents==0.0.4",
+    "serpapi>=0.1.5",
 ]

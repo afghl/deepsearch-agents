@@ -1,0 +1,10 @@
+import os
+import dotenv
+
+
+dotenv.load_dotenv()
+
+SERPAPI_KEY = os.getenv("SERPAPI_API_KEY", None)
+JINA_API_KEY = os.getenv("JINA_API_KEY", None)
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", None)
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", None)
