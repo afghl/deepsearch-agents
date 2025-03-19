@@ -45,7 +45,7 @@ class TaskSolver:
             input=query,
             context=context,
             max_turns=max_turns,
-            hooks=cls._get_hooks(on_new_task),
+            hooks=cls._get_hooks(on_new_task=on_new_task),
             run_config=run_config,
         )
         return result

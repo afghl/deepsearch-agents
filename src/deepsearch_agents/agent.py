@@ -1,4 +1,5 @@
-from typing import List, Optional
+from abc import ABC, abstractmethod
+from typing import Any, Generic, List, Optional
 from openai import AsyncOpenAI
 import requests
 import serpapi
@@ -6,10 +7,13 @@ from typing_extensions import TypedDict
 
 from agents import (
     Agent,
+    FunctionTool,
     ModelSettings,
     ModelTracing,
     OpenAIChatCompletionsModel,
     RunContextWrapper,
+    TContext,
+    Tool,
     function_tool,
 )
 
@@ -21,6 +25,24 @@ from deepsearch_agents.conf import (
     SERPAPI_KEY,
 )
 from deepsearch_agents.context import Task, TaskContext
+
+
+class Executor(ABC, Generic[TContext]):
+    @abstractmethod
+    def to_function_tool() -> FunctionTool:
+        pass
+
+    @abstractmethod
+    def instructions(self, ctx: TContext) -> str:
+        pass
+
+    @abstractmethod
+    def execute(self, ctx: TContext, params: Any) -> Any:
+        pass
+
+    @abstractmethod
+    def log(self, ctx: TContext, params: Any) -> None:
+        pass
 
 
 class SearchResult(TypedDict):
@@ -40,7 +62,7 @@ def search(
     ctx: RunContextWrapper[TaskContext], search_queries: List[str]
 ) -> list[SearchResult]:
     """
-    - Use web search to find relevant information
+    - Use web search to find relevant information.
     - Build a search request based on the deep intention behind the original question and the expected answer format
     - Always prefer a single search request, only add another request if the original question covers multiple aspects or elements and one query is not enough, each request focus on one specific aspect of the original question.
 

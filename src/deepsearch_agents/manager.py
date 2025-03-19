@@ -15,6 +15,7 @@ class Manager(Agent[TaskContext]):
         super().__init__(name=name)
         self.instructions = _build_instructions_and_tools
         self.start_datatime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        self.executors = []
         self.tools = [
             search,
             reflect,
