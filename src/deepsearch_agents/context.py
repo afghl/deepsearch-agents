@@ -12,20 +12,20 @@ class Evaluation:
 
 @dataclass
 class Answer:
-    evaluation: Evaluation = None
+    evaluation: Evaluation | None = None
     answer: str | None = None
     references: List[str] = field(default_factory=list)
 
 
 @dataclass
 class Task:
-    id: Optional[str] = field(default_factory=lambda: uuid.uuid4().hex)
-    origin_query: str = None
-    query: str = None
+    id: str = field(default_factory=lambda: uuid.uuid4().hex)
+    origin_query: str | None = None
+    query: str | None = None
     # TODO: 这里需要这个字段么？ 还是说一个bool值 is_solved就可以？
     # 这个字段可能会让模型来判断，比如是good solve 还是bad solve
     status: Literal["unresolved", "solved", "failed"] = "unresolved"
-    level: int = 0
+    level: int = 1
     parent: "Task | None" = None
     sub_tasks: Dict[str, "Task"] = field(default_factory=dict)
     progress: List[str] = field(default_factory=list)

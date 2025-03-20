@@ -1,5 +1,4 @@
 from typing import Callable, Dict, List
-from agents import RunContextWrapper
 from deepsearch_agents.context import TaskContext
 
 
@@ -14,7 +13,8 @@ def get_tool_instructions(ctx: TaskContext, tool_names: List[str]) -> str:
     for tool_name in tool_names:
         if tool_name in tool_instructions:
             instructions.append(
-                f""" <action-{tool_name}>
-                                {tool_instructions[tool_name](ctx)}"""
+                f"""<action-{tool_name}>
+    {tool_instructions[tool_name](ctx)}
+</action-{tool_name}>"""
             )
-    return "\n".join(instructions)
+    return "\n\n".join(instructions)

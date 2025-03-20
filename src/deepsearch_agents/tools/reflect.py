@@ -11,8 +11,8 @@ def reflect_instuctions(ctx: TaskContext) -> str:
     - Think slowly and planning lookahead. Examine <question>, <context>, previous conversation with users to identify knowledge gaps.
     - It's better to reflect after you have a fundamental understanding of the question, because you will have a better idea of the specific knowledge gap.
     - Reflect the gaps and plan a list key clarifying questions that deeply related to the original question and lead to the answer.
-    - The questions should be specific and clear, and should not be too broad or vague. 
-    - Each question should be independent and understandable without context.
+    - The questions should be specific and clear, and should not be too broad or vague. Each question should be independent and understandable without context.
+    - Phrase each question carefully so they don't rely on each other and can be answered independently.
     - Maximun 3 questions.
     """
 
@@ -26,10 +26,10 @@ def reflect(
     origin_question: str,
     reason: str,
     questions_to_answer: list[str],
-) -> List[str]:
+) -> str:
     """
     - Reflect the gaps and plan a list key clarifying questions that deeply related to the original question and lead to the answer.
-    - new questions will be delegated to the new agent and be answered by the new agent.
+    - New questions will be delegated to the new agent and be answered.
 
     Args:
         origin_question: The original question you are trying to answer.
@@ -41,4 +41,5 @@ def reflect(
     )  # For debugging purposes, remove in production
     # for q in questions_to_answer:
     #     ctx.context.tasks[q] = Task(q=q)
-    return "seq|seq".join(questions_to_answer)
+    # TODO:
+    return "|".join(questions_to_answer)

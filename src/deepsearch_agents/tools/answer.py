@@ -1,7 +1,7 @@
 from typing_extensions import TypedDict
 from agents import RunContextWrapper, function_tool
 
-from deepsearch_agents.context import TaskContext
+from deepsearch_agents.context import Answer, TaskContext
 from deepsearch_agents.tools._utils import tool_instructions
 
 
@@ -42,6 +42,8 @@ def answer(
           DO NOT contain any placeholder variables in the final answer.
     """
     print(
-        f"Answer: {answer}, references: {references}"
-    )  # For debugging purposes, remove in production
+        f"Perform Answer. curr: {ctx.context.current_task().id} Answer: {len(answer)}, references: {len(references)}"
+    )
+    curr = ctx.context.current_task()
+    curr.answer = Answer(answer=answer)
     return answer

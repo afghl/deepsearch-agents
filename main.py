@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import contextvars
+import json
 from agents import OpenAIProvider, RunConfig, RunContextWrapper, Runner
 
 import os
@@ -9,6 +10,7 @@ from deepsearch_agents._utils import Scope
 from deepsearch_agents.conf import OPENAI_API_KEY, OPENAI_BASE_URL
 from deepsearch_agents.context import Task, TaskContext, build_task_context
 from deepsearch_agents.planner import Planner
+from deepsearch_agents.tools import answer, search, visit
 
 
 async def main():
@@ -39,24 +41,28 @@ async def main():
         """
         Callback for when a new task is generated.
         """
-        print(f"run_sub_task is call curr_id {Scope.get_current_task_id()}")
 
         async def set_task_id_and_run():
             # Set the current task id in the context
             Scope.set_current_task_id(new_task.id)
-            print(f"Set current task id to {Scope.get_current_task_id()}")
             p = Planner()
+            p.tools = [
+                search,
+                answer,
+            ]
             p.task_generator_tool_name = "reflect"
             # Run the new task
-            await Runner.run(
+            sub_task_response = await Runner.run(
                 starting_agent=p,
                 input=new_task.query,
                 context=context.context,
                 run_config=conf,
             )
+            print(
+                f"task is finish run: {new_task.id}, sub_task_response: {sub_task_response.final_output}"
+            )
 
         ctx = contextvars.copy_context()
-        print("Running sub task, ctx: {ctx}")
         await ctx.run(set_task_id_and_run)
 
     planner.on_new_task_generated = run_sub_task
@@ -68,11 +74,11 @@ async def main():
         run_config=conf,
     )
 
-    answer = context.final_answer
     print("final output----------\n")
     print(result.final_output)
     print("final answer----------\n")
-    answer
+    context.final_answer
+    json.dump
 
 
 if __name__ == "__main__":

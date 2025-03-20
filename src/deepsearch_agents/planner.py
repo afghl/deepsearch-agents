@@ -3,7 +3,7 @@ import contextvars
 from dataclasses import dataclass, field
 import json
 import time
-from typing import Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
 from agents import (
     Agent,
@@ -16,7 +16,7 @@ from agents import (
 )
 
 from deepsearch_agents._utils import Scope
-from deepsearch_agents.conf import OPENAI_API_KEY, OPENAI_BASE_URL
+from deepsearch_agents.conf import MAX_TASK_DEPTH, OPENAI_API_KEY, OPENAI_BASE_URL
 from deepsearch_agents.context import Task, TaskContext
 from deepsearch_agents.tools import answer, search, visit, reflect
 from deepsearch_agents.tools._utils import get_tool_instructions
@@ -31,7 +31,6 @@ class Planner(Agent[TaskContext]):
         super().__init__(name=name)
         self.instructions = _build_instructions_and_tools
         self.start_datatime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        # self.executors: List[Executor] = []
         self.tools = [
             # search,
             reflect,
@@ -42,16 +41,26 @@ class Planner(Agent[TaskContext]):
         self.hooks = PlannerHooks()
 
     def _rebuild_tools(
-        self, ctx: RunContextWrapper[TaskContext], last_used: str
+        self, ctx: RunContextWrapper[TaskContext], last_used: Optional[str] = None
     ) -> None:
         """
         Rebuild the tools with the current context.
         """
         # last_used = ctx.context.last_used_tool
-        self.tools = [tool for tool in self.all_tools if tool.name != last_used]
+
+        forbid = []
+        if ctx.context.current_task().level >= MAX_TASK_DEPTH:
+            forbid.append(self.task_generator_tool_name)
+        if last_used and last_used not in forbid:
+            forbid.append(last_used)
+        new_tools = [tool for tool in self.all_tools if tool.name not in forbid]
+        # print(
+        #     f"rebuild tools for task: {ctx.context.current_task().id}, level is {ctx.context.current_task().level}, last_used: {last_used}, new_tools: {[t.name for t in new_tools]}"
+        # )
+        self.tools = new_tools
 
     def _build_new_tasks(
-        self, ctx: RunContextWrapper[TaskContext], result: list[str]
+        self, ctx: RunContextWrapper[TaskContext], result: str
     ) -> List[Task]:
         """
         Build new tasks from the result.
@@ -62,11 +71,9 @@ class Planner(Agent[TaskContext]):
         # if not isinstance(question_list, list):
         #     raise ValueError(f"Invalid question list: {question_list}")
         tasks = []
-        question_list = result.split("seq|seq")
+        # print(f"Build new tasks from result: {result}, type: {type(result)}")
+        question_list = result.split("|")
         curr = ctx.context.current_task()
-        print(
-            f"curr: {curr.id}, question_list: {question_list}, type of question_list: {type(question_list)}, len: {len(question_list)}"
-        )
         if isinstance(question_list, str):
             question_list = json.loads(question_list)
 
@@ -95,18 +102,34 @@ class Planner(Agent[TaskContext]):
 
 # TODO: seperate planner hooks and agent hooks
 class PlannerHooks(AgentHooks[TaskContext]):
-    async def on_tool_end(self, context, agent, tool, result):
+    # async def on_tool_start(self, context, agent, tool):
+    async def on_start(
+        self, context: RunContextWrapper[TaskContext], agent: Agent[TaskContext]
+    ) -> None:
+        agent._rebuild_tools(context)
+        print(
+            f"Planner on_start: {context.context.current_task().id}, tools: {agent.tool_names}"
+        )
+
+    async def on_tool_end(self, context, a, tool, result):
+        agent: Planner[TaskContext] = a
         agent._rebuild_tools(context, tool.name)
-        if tool.name == agent.task_generator_tool_name and result:
-            new_tasks = agent._build_new_tasks(context, result)
-            for t in new_tasks:
-                if hasattr(agent, "on_new_task_generated"):
+        if tool.name != agent.task_generator_tool_name or not result:
+            return
+        to_wait = []
+        new_tasks = agent._build_new_tasks(context, result)
+        for t in new_tasks:
+            if hasattr(agent, "on_new_task_generated"):
+                to_wait.append(
                     asyncio.create_task(agent.on_new_task_generated(context, t))
+                )
+        await asyncio.gather(*to_wait)
 
 
 def _build_instructions_and_tools(
     ctx: RunContextWrapper[TaskContext], agent: Agent[TaskContext]
 ) -> str:
+    # TODO: set start_datetime in context
     return f"""
 Current Date: {agent.start_datatime}
 

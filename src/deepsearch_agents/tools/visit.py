@@ -45,8 +45,6 @@ async def visit(ctx: RunContextWrapper[TaskContext], urls: List[str]) -> str:
     Args:
         urls: Must be an array of URLs, choose up the most relevant 5 URLs to visit
     """
-    return "nothing useful"
-    # 需要能够随时储存和获取current_task，否则串不起来
     contents = []
     print(
         f"Perform Visit. URLs: {len(urls)}, current_task_id: {Scope.get_current_task_id()}"
@@ -54,7 +52,7 @@ async def visit(ctx: RunContextWrapper[TaskContext], urls: List[str]) -> str:
 
     for url in urls:
         try:
-            useful_content = await processURL(ctx, url)
+            useful_content = await get_content(ctx, url)
             if useful_content:
                 contents.append(useful_content)
                 break
@@ -67,7 +65,7 @@ async def visit(ctx: RunContextWrapper[TaskContext], urls: List[str]) -> str:
     return "\n".join(contents)
 
 
-async def processURL(ctx: RunContextWrapper[TaskContext], url: str) -> str:
+async def get_content(ctx: RunContextWrapper[TaskContext], url: str) -> str:
     """
     - Crawl and read full content from URLs
     """
