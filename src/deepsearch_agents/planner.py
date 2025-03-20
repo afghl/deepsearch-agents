@@ -8,11 +8,7 @@ from typing import Any, Callable, Dict, List, Optional
 from agents import (
     Agent,
     AgentHooks,
-    OpenAIProvider,
-    RunConfig,
     RunContextWrapper,
-    RunHooks,
-    Runner,
 )
 
 from deepsearch_agents._utils import Scope
@@ -32,9 +28,9 @@ class Planner(Agent[TaskContext]):
         self.instructions = _build_instructions_and_tools
         self.start_datatime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         self.tools = [
-            # search,
+            search,
             reflect,
-            # visit,
+            visit,
             answer,
         ]
         self.all_tools = self.tools
@@ -46,18 +42,13 @@ class Planner(Agent[TaskContext]):
         """
         Rebuild the tools with the current context.
         """
-        # last_used = ctx.context.last_used_tool
-
         forbid = []
         if ctx.context.current_task().level >= MAX_TASK_DEPTH:
             forbid.append(self.task_generator_tool_name)
         if last_used and last_used not in forbid:
             forbid.append(last_used)
-        new_tools = [tool for tool in self.all_tools if tool.name not in forbid]
-        # print(
-        #     f"rebuild tools for task: {ctx.context.current_task().id}, level is {ctx.context.current_task().level}, last_used: {last_used}, new_tools: {[t.name for t in new_tools]}"
-        # )
-        self.tools = new_tools
+        available = [tool for tool in self.all_tools if tool.name not in forbid]
+        self.tools = available
 
     def _build_new_tasks(
         self, ctx: RunContextWrapper[TaskContext], result: str
@@ -66,12 +57,7 @@ class Planner(Agent[TaskContext]):
         Build new tasks from the result.
         """
         print(f"Build new tasks from result: {result}")
-        # TODO:
-        # question_list = json.loads(result)
-        # if not isinstance(question_list, list):
-        #     raise ValueError(f"Invalid question list: {question_list}")
         tasks = []
-        # print(f"Build new tasks from result: {result}, type: {type(result)}")
         question_list = result.split("|")
         curr = ctx.context.current_task()
         if isinstance(question_list, str):
@@ -88,7 +74,7 @@ class Planner(Agent[TaskContext]):
             )
             cnt += 1
             print(
-                f"curr: {curr.id}Create new task: {task.id}, ctx: {Scope.get_current_task_id()}"
+                f"curr: {curr.id} Create new task: {task.id}, ctx: {Scope.get_current_task_id()}"
             )
             curr.sub_tasks[task.id] = task
             ctx.context.tasks[task.id] = task
@@ -102,11 +88,13 @@ class Planner(Agent[TaskContext]):
 
 # TODO: seperate planner hooks and agent hooks
 class PlannerHooks(AgentHooks[TaskContext]):
-    # async def on_tool_start(self, context, agent, tool):
     async def on_start(
         self, context: RunContextWrapper[TaskContext], agent: Agent[TaskContext]
     ) -> None:
         agent._rebuild_tools(context)
+        if context.context.current_task().level == 1:
+            agent.tools = [tool for tool in agent.all_tools if tool.name == "reflect"]
+
         print(
             f"Planner on_start: {context.context.current_task().id}, tools: {agent.tool_names}"
         )
@@ -136,10 +124,17 @@ Current Date: {agent.start_datatime}
 You are an advanced AI research agent from DeepSearch AI. You are specialized in multistep reasoning. 
 Using your best knowledge, conversation with the user and lessons learned, answer the user question with absolute certainty.
 
-Here's the actions provided, read the docs blow. Choose one of the following actions:
+Here's the actions provided. YOU CAN ONLY chose one of these actions. DON'T use any other actions not listed here.
+<AVAILABLE ACTIONS>
+{agent.tool_names}
+</AVAILABLE ACTIONS>
+
+Below are the details documentation of each action.
 <actions>
 {get_tool_instructions(ctx.context, agent.tool_names)}
 </actions>
+
+
 
 Think step by step, choose the action carefully.
 """

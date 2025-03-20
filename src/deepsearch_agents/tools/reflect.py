@@ -7,9 +7,10 @@ from deepsearch_agents.tools._utils import tool_instructions
 
 
 def reflect_instuctions(ctx: TaskContext) -> str:
+    # - ONLY reflect AFTER you have a fundamental understanding of the question. because you will have a better idea of the specific knowledge gap.
     return f"""
+    - Always pioritize reflection once you got a question.
     - Think slowly and planning lookahead. Examine <question>, <context>, previous conversation with users to identify knowledge gaps.
-    - It's better to reflect after you have a fundamental understanding of the question, because you will have a better idea of the specific knowledge gap.
     - Reflect the gaps and plan a list key clarifying questions that deeply related to the original question and lead to the answer.
     - The questions should be specific and clear, and should not be too broad or vague. Each question should be independent and understandable without context.
     - Phrase each question carefully so they don't rely on each other and can be answered independently.

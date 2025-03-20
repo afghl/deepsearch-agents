@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import asyncio
 from typing import Any, Callable, Generic, List, Optional
 from openai import AsyncOpenAI
 from pydantic import BaseModel
@@ -21,9 +22,8 @@ from deepsearch_agents.conf import (
     JINA_API_KEY,
     OPENAI_API_KEY,
     OPENAI_BASE_URL,
-    SERPAPI_KEY,
 )
-from deepsearch_agents.context import Task, TaskContext
+from deepsearch_agents.context import Knowledge, Task, TaskContext
 from deepsearch_agents.tools._utils import tool_instructions
 
 
@@ -49,19 +49,28 @@ async def visit(ctx: RunContextWrapper[TaskContext], urls: List[str]) -> str:
     print(
         f"Perform Visit. URLs: {len(urls)}, current_task_id: {Scope.get_current_task_id()}"
     )  # For debugging purposes, remove in production
+    urls_to_process = urls[:5]
 
-    for url in urls:
-        try:
-            useful_content = await get_content(ctx, url)
-            if useful_content:
-                contents.append(useful_content)
-                break
-        except Exception as e:
-            print(f"Error processing URL {url}: {e}")
-            continue
+    # 创建所有URL的任务列表
+    tasks = []
+    for url in urls_to_process:
+        tasks.append(get_content(ctx, url))
+
+    # 并发执行所有任务
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    # 处理结果
+    for url, result in zip(urls_to_process, results):
+        if isinstance(result, Exception):
+            print(f"Error processing URL {url}: {result}")
+        elif result:
+            contents.append(result)
+            curr = ctx.context.current_task()
+            curr.knowledges.append(Knowledge(reference=url, answer=result))
+
     print(
-        f"finish visit {urls[0]} Contents: {contents}, current_task_id: {Scope.get_current_task_id()}"
-    )  # For debugging purposes, remove in production
+        f"Finished visiting {len(urls_to_process)} URLs. Got {len(contents)} valid contents. Current_task_id: {Scope.get_current_task_id()}"
+    )
+
     return "\n".join(contents)
 
 
@@ -73,7 +82,7 @@ async def get_content(ctx: RunContextWrapper[TaskContext], url: str) -> str:
     headers = {"Authorization": f"Bearer {JINA_API_KEY}"}
     response = requests.get(url, headers=headers)
     model = OpenAIChatCompletionsModel(
-        "gpt-4o",
+        "gpt-4o-mini",
         openai_client=AsyncOpenAI(base_url=OPENAI_BASE_URL, api_key=OPENAI_API_KEY),
     )
     q = ctx.context.origin_query
@@ -93,4 +102,4 @@ async def get_content(ctx: RunContextWrapper[TaskContext], url: str) -> str:
         handoffs=[],
         tracing=ModelTracing.DISABLED,
     )
-    return summarize_res.output[0].content
+    return summarize_res.output[0].content[0].text

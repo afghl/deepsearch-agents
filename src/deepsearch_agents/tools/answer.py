@@ -26,11 +26,11 @@ class Reference(TypedDict):
     datetime: str
 
 
-@function_tool
+@function_tool()
 def answer(
     ctx: RunContextWrapper[TaskContext], references: list[Reference], answer: str
 ) -> str:
-    """
+    r"""
     - provide a final verified answer with references.
 
     Args:
@@ -46,4 +46,4 @@ def answer(
     )
     curr = ctx.context.current_task()
     curr.answer = Answer(answer=answer)
-    return answer
+    return "You have provided a final verified answer with references. Congratulations! You have completed the task. Our conversation ends here."

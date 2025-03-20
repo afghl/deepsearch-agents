@@ -60,9 +60,10 @@ def search(
     - Search query should be search engine-friendly, concise, using relevant keywords, avoiding unnecessary stop words.
 
     Args:
-        search_queries: Always prefer a single request, only add another request if the original question covers multiple aspects or elements and one search request is definitely not enough, each request focus on one specific   aspect of the original question. Minimize mutual information between each request. Maximum 3 search requests.
+        search_queries: Always prefer a single request, only add another request if the original question covers multiple aspects or elements and one search request is definitely not enough, each request focus on one specific aspect of the original question. Minimize mutual information between each request. Maximum 3 search requests.
     """
 
+    print(f"Perform Search: {search_queries}")
     if search_queries is None or len(search_queries) == 0:
         return []
     res = serpapi.search(
