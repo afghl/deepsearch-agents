@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+import time
 from typing import Dict, Any, List, Literal, Optional
 import uuid
 
@@ -42,6 +43,7 @@ class Task:
 
 @dataclass
 class TaskContext:
+    start_date_time: str
     origin_query: str
     final_answer: Answer | None = None
     tasks: Dict[str, Task] = field(default_factory=dict)
@@ -50,11 +52,12 @@ class TaskContext:
         self.origin_query = task.origin_query
         self.tasks = {}
         self.tasks[task.id] = task
+        self.start_date_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
     def current_task(self) -> Task:
         current_task_id = Scope.get_current_task_id()
         if not current_task_id:
-            print(f"No current task id found in context")
+            raise ("No current task id found in context")
         return self.tasks[current_task_id]
 
 

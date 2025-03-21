@@ -19,7 +19,7 @@ from agents import (
 from deepsearch_agents._utils import Scope
 from deepsearch_agents.conf import (
     JINA_API_KEY,
-    OPENAI_API_KEY,
+    MAX_SEARCH_RESULTS,
     OPENAI_BASE_URL,
     SERPAPI_KEY,
 )
@@ -66,6 +66,7 @@ def search(
     print(f"Perform Search: {search_queries}")
     if search_queries is None or len(search_queries) == 0:
         return []
+    # rewrite the query
     res = serpapi.search(
         q=search_queries[0], engine="google", hl="en", gl="us", api_key=SERPAPI_KEY
     )
@@ -77,7 +78,7 @@ def search(
             date=r.get("date"),
             source=r.get("source"),
         )
-        for r in res["organic_results"][:7]
+        for r in res["organic_results"][:MAX_SEARCH_RESULTS]
     ]  # Return the top 7 results
     # TODO: a reranker here
     print(

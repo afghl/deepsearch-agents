@@ -20,7 +20,7 @@ from agents import (
 from deepsearch_agents._utils import Scope
 from deepsearch_agents.conf import (
     JINA_API_KEY,
-    OPENAI_API_KEY,
+    MY_OPENAI_API_KEY,
     OPENAI_BASE_URL,
 )
 from deepsearch_agents.context import Knowledge, Task, TaskContext
@@ -83,7 +83,7 @@ async def get_content(ctx: RunContextWrapper[TaskContext], url: str) -> str:
     response = requests.get(url, headers=headers)
     model = OpenAIChatCompletionsModel(
         "gpt-4o-mini",
-        openai_client=AsyncOpenAI(base_url=OPENAI_BASE_URL, api_key=OPENAI_API_KEY),
+        openai_client=AsyncOpenAI(base_url=OPENAI_BASE_URL, api_key=MY_OPENAI_API_KEY),
     )
     q = ctx.context.origin_query
     summarize_res = await model.get_response(

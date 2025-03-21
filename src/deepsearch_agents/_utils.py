@@ -9,7 +9,7 @@ _current_task_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
 
 class Scope:
     @classmethod
-    def get_current_task_id(cls) -> str:
+    def get_current_task_id(cls) -> str | None:
         return _current_task_id.get()
 
     @classmethod

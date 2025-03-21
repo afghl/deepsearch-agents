@@ -16,7 +16,6 @@ from agents import (
     trace,
 )
 from agents.tracing.processors import (
-    ConsoleSpanExporter,
     BatchTraceProcessor,
     TracingExporter,
 )
@@ -24,7 +23,7 @@ from agents.tracing.processors import (
 import os
 
 from deepsearch_agents._utils import Scope
-from deepsearch_agents.conf import OPENAI_API_KEY, OPENAI_BASE_URL
+from deepsearch_agents.conf import MY_OPENAI_API_KEY, OPENAI_BASE_URL
 from deepsearch_agents.context import Task, TaskContext, build_task_context
 
 from deepsearch_agents.planner import Planner
@@ -49,13 +48,13 @@ class ConsoleSpanExporter(TracingExporter):
 async def main():
     parser = argparse.ArgumentParser(description="DeepSearch Agents CLI")
     parser.add_argument("query", type=str, help="query string to search")
-    set_trace_processors([BatchTraceProcessor(ConsoleSpanExporter())])
+    # set_trace_processors([BatchTraceProcessor(ConsoleSpanExporter())])
     # args = parser.parse_args()
     # q = args.query.strip()
     # q = "why is spx down 10% in last month?"
     q = "What are the recent policies released by Trump, and how will these policies affect the United States and other countries?"
 
-    trace_id = uuid.uuid4().hex
+    trace_id = f"trace_{uuid.uuid4().hex}"
     new_trace = trace(
         workflow_name="deepsearch",
         trace_id=trace_id,
@@ -64,7 +63,7 @@ async def main():
     conf = RunConfig(
         model_provider=OpenAIProvider(
             base_url=OPENAI_BASE_URL,
-            api_key=OPENAI_API_KEY,
+            api_key=MY_OPENAI_API_KEY,
             use_responses=False,
         ),
         tracing_disabled=True,

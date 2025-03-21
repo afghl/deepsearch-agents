@@ -12,7 +12,7 @@ from agents import (
 )
 
 from deepsearch_agents._utils import Scope
-from deepsearch_agents.conf import MAX_TASK_DEPTH, OPENAI_API_KEY, OPENAI_BASE_URL
+from deepsearch_agents.conf import MAX_TASK_DEPTH, OPENAI_BASE_URL
 from deepsearch_agents.context import Task, TaskContext
 from deepsearch_agents.tools import answer, search, visit, reflect
 from deepsearch_agents.tools._utils import get_tool_instructions
@@ -26,7 +26,6 @@ class Planner(Agent[TaskContext]):
     ):
         super().__init__(name=name)
         self.instructions = _build_instructions_and_tools
-        self.start_datatime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         self.tools = [
             search,
             reflect,
@@ -92,12 +91,6 @@ class PlannerHooks(AgentHooks[TaskContext]):
         self, context: RunContextWrapper[TaskContext], agent: Agent[TaskContext]
     ) -> None:
         agent._rebuild_tools(context)
-        if context.context.current_task().level == 1:
-            agent.tools = [tool for tool in agent.all_tools if tool.name == "reflect"]
-
-        print(
-            f"Planner on_start: {context.context.current_task().id}, tools: {agent.tool_names}"
-        )
 
     async def on_tool_end(self, context, a, tool, result):
         agent: Planner[TaskContext] = a
@@ -119,7 +112,7 @@ def _build_instructions_and_tools(
 ) -> str:
     # TODO: set start_datetime in context
     return f"""
-Current Date: {agent.start_datatime}
+Current Date: {ctx.context.start_date_time}
 
 You are an advanced AI research agent from DeepSearch AI. You are specialized in multistep reasoning. 
 Using your best knowledge, conversation with the user and lessons learned, answer the user question with absolute certainty.
