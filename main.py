@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import contextvars
+import os
 from dataclasses import dataclass
 import json
 from typing import Any
@@ -10,17 +11,9 @@ from agents import (
     RunConfig,
     RunContextWrapper,
     Runner,
-    Span,
-    Trace,
-    set_trace_processors,
     trace,
 )
-from agents.tracing.processors import (
-    BatchTraceProcessor,
-    TracingExporter,
-)
-
-import os
+from agents.tracing.processors import TracingExporter
 
 from deepsearch_agents._utils import Scope
 from deepsearch_agents.conf import MY_OPENAI_API_KEY, OPENAI_BASE_URL
@@ -28,21 +21,6 @@ from deepsearch_agents.context import Task, TaskContext, build_task_context
 
 from deepsearch_agents.planner import Planner
 from deepsearch_agents.tools import answer, search, visit
-
-consolg_logs: list[str] = []
-
-
-@dataclass
-class ConsoleSpanExporter(TracingExporter):
-    def export(self, items: list[Trace | Span[Any]]) -> None:
-        for item in items:
-            if isinstance(item, Trace):
-                # print(f"[Exporter] Export trace_id={item.trace_id}, name={item.name}, ")
-                log = f"[Exporter] Export trace_id={item.trace_id}, name={item.name}, "
-            else:
-                # print(f"[Exporter] Export span: {item.export()}")
-                log = f"[Exporter] Export span: {item.export()}"
-            consolg_logs.append(log)
 
 
 async def main():
@@ -117,9 +95,6 @@ async def main():
     context.final_answer
 
     print("logs----------\n")
-
-    for log in consolg_logs:
-        print(log)
 
 
 if __name__ == "__main__":

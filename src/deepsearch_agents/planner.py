@@ -44,7 +44,7 @@ class Planner(Agent[TaskContext]):
         forbid = []
         if ctx.context.current_task().level >= MAX_TASK_DEPTH:
             forbid.append(self.task_generator_tool_name)
-        if last_used and last_used not in forbid:
+        if last_used and last_used not in forbid and last_used != "answer":
             forbid.append(last_used)
         available = [tool for tool in self.all_tools if tool.name not in forbid]
         self.tools = available
@@ -110,24 +110,33 @@ class PlannerHooks(AgentHooks[TaskContext]):
 def _build_instructions_and_tools(
     ctx: RunContextWrapper[TaskContext], agent: Agent[TaskContext]
 ) -> str:
-    # TODO: set start_datetime in context
+    tool_names = "\n".join([f"{i}. {tool.name}" for i, tool in enumerate(agent.tools)])
     return f"""
 Current Date: {ctx.context.start_date_time}
 
-You are an advanced AI research agent from DeepSearch AI. You are specialized in multistep reasoning. 
+You are an advanced AI research agent from Deepsearch AI. You are specialized in multistep reasoning. 
+Using your best knowledge, conversation with the user and lessons learned, answer the user question with absolute certainty.
+
+-Goal-
+Given a question in any domain, do research to find the answer. Provide a detailed, comprehensive and factually accurate answer.
+
+-Rules-
+1. Think step by step, choose the action carefully.
+2. You job is to provide the best answer, So the conversation does not end until the user is satisfied with the answer.
+
+-Question-
+{ctx.context.origin_query}
 Using your best knowledge, conversation with the user and lessons learned, answer the user question with absolute certainty.
 
 Here's the actions provided. YOU CAN ONLY chose one of these actions. DON'T use any other actions not listed here.
-<AVAILABLE ACTIONS>
-{agent.tool_names}
-</AVAILABLE ACTIONS>
+
+-Available actions-
+{tool_names}
 
 Below are the details documentation of each action.
-<actions>
+
+-Action details-
 {get_tool_instructions(ctx.context, agent.tool_names)}
-</actions>
 
 
-
-Think step by step, choose the action carefully.
 """

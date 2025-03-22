@@ -39,7 +39,7 @@ def search_instuctions(ctx: TaskContext) -> str:
 tool_instructions["search"] = search_instuctions
 
 
-class SearchResult(TypedDict):
+class SearchResult(BaseModel):
     """
     Search result from SERPAPI
     """
@@ -47,8 +47,8 @@ class SearchResult(TypedDict):
     title: str
     link: str
     snippet: str
-    date: str = None
-    source: str = None
+    date: str | None = None
+    source: str | None = None
 
 
 @function_tool(name_override="search")
@@ -66,6 +66,7 @@ def search(
     print(f"Perform Search: {search_queries}")
     if search_queries is None or len(search_queries) == 0:
         return []
+    quereis = rewrite(search_queries)
     # rewrite the query
     res = serpapi.search(
         q=search_queries[0], engine="google", hl="en", gl="us", api_key=SERPAPI_KEY
@@ -79,9 +80,18 @@ def search(
             source=r.get("source"),
         )
         for r in res["organic_results"][:MAX_SEARCH_RESULTS]
-    ]  # Return the top 7 results
-    # TODO: a reranker here
+    ]
+    reranked_ret = rerank(res)
+
     print(
         f"Perform Search. queries: {search_queries}, search results: {len(res)}, current_task_id: {Scope.get_current_task_id()}"
     )
-    return res
+    return reranked_ret
+
+
+def rewrite(search_queries: List[str]) -> List[str]:
+    return search_queries
+
+
+def rerank(results: List[SearchResult]) -> List[SearchResult]:
+    return results

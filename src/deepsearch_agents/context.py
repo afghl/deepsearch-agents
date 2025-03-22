@@ -3,6 +3,8 @@ import time
 from typing import Dict, Any, List, Literal, Optional
 import uuid
 
+from pydantic import BaseModel
+
 from deepsearch_agents._utils import Scope
 
 
@@ -18,8 +20,7 @@ class Answer:
     references: List[str] = field(default_factory=list)
 
 
-@dataclass
-class Knowledge:
+class Knowledge(BaseModel):
     reference: str
     answer: str
 
@@ -57,7 +58,7 @@ class TaskContext:
     def current_task(self) -> Task:
         current_task_id = Scope.get_current_task_id()
         if not current_task_id:
-            raise ("No current task id found in context")
+            raise RuntimeError("No current task id found in context")
         return self.tasks[current_task_id]
 
 
