@@ -1,3 +1,4 @@
+import contextvars
 from dataclasses import dataclass, field
 import time
 from typing import Dict, Any, List, Literal, Optional
@@ -6,6 +7,11 @@ import uuid
 from pydantic import BaseModel
 
 from deepsearch_agents._utils import Scope
+
+
+_current_task_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "current_task_id", default=None
+)
 
 
 @dataclass
@@ -56,15 +62,31 @@ class TaskContext:
         self.start_date_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
     def current_task(self) -> Task:
-        current_task_id = Scope.get_current_task_id()
+        """获取当前活动任务"""
+        current_task_id = _current_task_id.get()
         if not current_task_id:
-            raise RuntimeError("No current task id found in context")
+            raise ValueError("No current task id found in context")
+        if current_task_id not in self.tasks:
+            raise ValueError(
+                f"Task ID {current_task_id} does not exist in this context"
+            )
         return self.tasks[current_task_id]
+
+    def set_as_current(self, task: Task) -> contextvars.Token:
+        """将指定任务设置为当前任务"""
+        if task.id not in self.tasks:
+            raise ValueError(f"Task ID {task.id} does not exist in this context")
+        return _current_task_id.set(task.id)
+
+    def reset_current_task(self, token: contextvars.Token) -> None:
+        """恢复之前的任务上下文"""
+        _current_task_id.reset(token)
 
 
 def build_task_context(query: str) -> TaskContext:
+    """创建一个新的任务上下文并设置为当前协程的上下文"""
     task = Task(origin_query=query, query=query)
     task_context = TaskContext(task)
-    # Set the current task id in the context
+    # 为了兼容现有的_utils.py中的Scope类，也设置全局的task_id
     Scope.set_current_task_id(task.id)
     return task_context

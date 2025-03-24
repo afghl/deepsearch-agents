@@ -1,23 +1,23 @@
 from typing_extensions import TypedDict
 from agents import RunContextWrapper, function_tool
+from typing import Optional
 
 from deepsearch_agents.context import Answer, TaskContext
 from deepsearch_agents.tools._utils import tool_instructions
 
 
-def answer_instuctions(ctx: TaskContext) -> str:
-    # TODO: fix duplicate code
+def answer_description(ctx: Optional[TaskContext] = None) -> str:
     return f"""
-    - For greetings, casual conversation, general knowledge questions answer directly without references.
-    - If user ask you to retrieve previous messages or chat history, remember you do have access to the chat history, answer directly without references.
-    - For all other questions, provide a verified answer with references. Each reference must include exactQuote, url and datetime.
-    - You provide deep, unexpected insights, identifying hidden patterns and connections, and creating "aha moments.".
-    - You break conventional thinking, establish unique cross-disciplinary connections, and bring new perspectives to the user.
-    - Answer questions only when you are confident that you have gathered enough information and knowledge. Otherwise, chose <action-reflect>.
+    - For greetings, casual conversation, and general knowledge inquiries, provide direct responses without references.
+    - If users request information from previous messages or chat history, utilize your access to the conversation history and respond accordingly without references.
+    - For all other inquiries, deliver a verified answer with proper references. Each reference must include an exact quote, URL, and timestamp.
+    - Provide profound, insightful analysis that identifies underlying patterns and connections, creating moments of significant realization for the user.
+    - Transcend conventional thinking paradigms by establishing novel cross-disciplinary connections and introducing fresh perspectives.
+    - Only provide definitive answers when you have sufficient information and knowledge. Otherwise, select the reflection action for further analysis.
     """
 
 
-tool_instructions["answer"] = answer_instuctions
+tool_instructions["answer"] = answer_description
 
 
 class Reference(TypedDict):
@@ -26,7 +26,7 @@ class Reference(TypedDict):
     datetime: str
 
 
-@function_tool()
+@function_tool(description_override=answer_description)
 def answer(
     ctx: RunContextWrapper[TaskContext], references: list[Reference], answer: str
 ) -> str:

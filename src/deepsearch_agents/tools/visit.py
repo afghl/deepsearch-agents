@@ -33,17 +33,16 @@ class SummarizeResult(BaseModel):
     evaluate: Literal["useful", "not_related", "unavailable"]
 
 
-def visit_instuctions(ctx: TaskContext | None = None) -> str:
-    # TODO: fix duplicate code
+def visit_description(ctx: Optional[TaskContext] = None) -> str:
     return f"""
-- Crawl and read full content from URLs, you can get the fulltext, last updated datetime etc of any URL.
+- Access and retrieve comprehensive content from web URLs, including full text, publication metadata, and last updated timestamps.
     """
 
 
-tool_instructions["visit"] = visit_instuctions
+tool_instructions["visit"] = visit_description
 
 
-@function_tool(description_override=visit_instuctions())
+@function_tool(description_override=visit_description())
 async def visit(
     ctx: RunContextWrapper[TaskContext],
     urls: List[str],
@@ -92,22 +91,19 @@ if __name__ == "__main__":
     main()
 
 
-def sumarize_instuctions() -> str:
+def summarize_description() -> str:
     return """
-You are an advanced AI agent for summarizing and extracting useful information from the web page content.
+You are an advanced AI analysis system specialized in extracting and synthesizing relevant information from web content.
         
-You are working on a task to gather information to answer the following question: 
-You are given a web page content, your task is to extract the most useful information from the content and summarize it.
-
--Question-
+Your task is to analyze web page content to gather information that addresses the following inquiry: 
 {origin_query}
-more specifically, {query}
+More specifically: {query}
 
--Rules-
-- Think carefully and deeply about the content, and evaluate why is this information useful for answering the question. Give your reasoning in the <reason> field
-- Try to use the original content of the content in your summary, but you can also paraphrase if needed.
-- Sometimes, the web page could be unavailable (404 page, forbid crawling, rate limit etc.). Report as evaluate="unavailable".
-- If the content is not related to the question, report as evaluate="not_related".
+Guidelines for Analysis:
+- Conduct a thorough evaluation of the content's relevance and utility for addressing the inquiry. Document your analytical reasoning in the <reason> field.
+- Prioritize direct quotations from the original content when appropriate, while employing thoughtful paraphrasing to enhance clarity when necessary.
+- If the web resource is inaccessible (e.g., 404 error, access restrictions, rate limitations), classify as evaluate="unavailable".
+- If the content lacks relevance to the inquiry after careful analysis, classify as evaluate="not_related".
 """
 
 
@@ -125,7 +121,7 @@ async def get_content(ctx: RunContextWrapper[TaskContext], url: str) -> Summariz
         model="gpt-4o",
         input=response.text,
         output_type=SummarizeResult,
-        system_instructions=sumarize_instuctions().format(
+        system_instructions=summarize_description().format(
             origin_query=origin_query,
             query=query,
         ),

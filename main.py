@@ -7,10 +7,12 @@ import json
 from typing import Any
 import uuid
 from agents import (
+    Agent,
     OpenAIProvider,
     RunConfig,
     RunContextWrapper,
     Runner,
+    Tool,
     trace,
 )
 from agents.tracing.processors import TracingExporter
@@ -19,8 +21,50 @@ from deepsearch_agents._utils import Scope
 from deepsearch_agents.conf import MY_OPENAI_API_KEY, OPENAI_BASE_URL
 from deepsearch_agents.context import Task, TaskContext, build_task_context
 
-from deepsearch_agents.planner import Planner
-from deepsearch_agents.tools import answer, search, visit
+from deepsearch_agents.planner import Planner, PlannerHooks
+from deepsearch_agents.tools import answer, reflect, search, visit
+
+
+class Hooks(PlannerHooks):
+    def __init__(self, conf: RunConfig):
+        super().__init__()
+        self.conf = conf
+
+    async def on_tool_end(
+        self,
+        ctx: RunContextWrapper[TaskContext],
+        agent: Agent[TaskContext],
+        tool: Tool,
+        result: str,
+    ) -> None:
+        agent.rebuild_tools(ctx)
+
+    async def on_new_task_generated(
+        self, context: RunContextWrapper[TaskContext], agent: Planner, new_task: Task
+    ) -> None:
+        """
+        Callback for when a new task is generated.
+        """
+
+        async def run():
+            # Set the current task id in the context
+            context.context.set_as_current(new_task)
+            p = Planner(name=f"DeepSearch Agent-{new_task.id}")
+            p.task_generator_tool_name = "reflect"
+            try:
+                await Runner.run(
+                    starting_agent=p,
+                    input=new_task.query,
+                    context=context.context,
+                    run_config=self.conf,
+                )
+            except Exception as e:
+                print(f"Error running sub task: {e}")
+            print(f"task is finish run: {new_task.id}")
+
+        ctx = contextvars.copy_context()
+        await ctx.run(run)
+        return
 
 
 async def main():
@@ -44,43 +88,16 @@ async def main():
             api_key=MY_OPENAI_API_KEY,
             use_responses=False,
         ),
-        tracing_disabled=True,
-        trace_id=trace_id,
-        model="DeepSeek-R1",
     )
     context = build_task_context(q)
 
-    planner = Planner()
-    planner.name = "DeepSearch Agent"
-    planner.task_generator_tool_name = "reflect"
+    planner = Planner(
+        name="DeepSearch Agent",
+        tools=[search, visit, answer, reflect],
+        task_generator="reflect",
+        planner_hooks=Hooks(conf),
+    )
 
-    async def run_sub_task(
-        context: RunContextWrapper[TaskContext], new_task: Task
-    ) -> None:
-        """
-        Callback for when a new task is generated.
-        """
-
-        async def set_task_id_and_run():
-            # Set the current task id in the context
-            Scope.set_current_task_id(new_task.id)
-            p = Planner(name=f"DeepSearch Agent-{new_task.id}")
-            p.task_generator_tool_name = "reflect"
-            try:
-                await Runner.run(
-                    starting_agent=p,
-                    input=new_task.query,
-                    context=context.context,
-                    run_config=conf,
-                )
-            except Exception as e:
-                print(f"Error running sub task: {e}")
-            print(f"task is finish run: {new_task.id}")
-
-        ctx = contextvars.copy_context()
-        await ctx.run(set_task_id_and_run)
-
-    planner.on_new_task_generated = run_sub_task
     result = await Runner.run(
         starting_agent=planner,
         input=q,

@@ -27,7 +27,7 @@ from deepsearch_agents.context import TaskContext
 from deepsearch_agents.tools._utils import tool_instructions
 
 
-def search_instuctions(ctx: TaskContext) -> str:
+def search_description(ctx: Optional[TaskContext] = None) -> str:
     return f"""
     - Useful To get external information to answer the question.
     - Use web search to find relevant information.
@@ -36,7 +36,7 @@ def search_instuctions(ctx: TaskContext) -> str:
     """
 
 
-tool_instructions["search"] = search_instuctions
+tool_instructions["search"] = search_description
 
 
 class SearchResult(BaseModel):
@@ -51,7 +51,7 @@ class SearchResult(BaseModel):
     source: str | None = None
 
 
-@function_tool(name_override="search")
+@function_tool(description_override=search_description)
 def search(
     ctx: RunContextWrapper[TaskContext], search_queries: List[str]
 ) -> list[SearchResult]:
