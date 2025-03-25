@@ -72,6 +72,9 @@ class PlannerHooks(AgentHooks[TaskContext]):
 
 
 def _hooks(planner_hooks: PlannerHooks | None) -> AgentHooks[TaskContext] | None:
+    """
+    This function creates a new hooks instance that extends the original hooks with the planner hooks.
+    """
     if not planner_hooks:
         return None
 

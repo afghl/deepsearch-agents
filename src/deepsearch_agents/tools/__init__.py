@@ -10,4 +10,5 @@ __all__ = [
     "visit",
     "search",
     "get_tool_instructions",
+    "log_action",
 ]

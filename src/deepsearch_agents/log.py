@@ -1,43 +1,61 @@
 import logging
 from logging import getLogger, INFO, StreamHandler
 import re
-from typing import Any, Dict, Union
-from colorama import init, Fore, Style
+import json
+from rich.logging import RichHandler
+from rich.console import Console
+from rich import print_json
 
-# 初始化 colorama
-init()
+
+# 创建Rich控制台，使用自定义主题
+console = Console()
 
 
-class ColoredFormatter(logging.Formatter):
+class ColoredDictLogHandler(RichHandler):
 
-    COLORS = {
-        "DEBUG": Fore.BLUE,
-        "INFO": Fore.GREEN,
-        "WARNING": Fore.YELLOW,
-        "ERROR": Fore.RED,
-        "CRITICAL": Fore.RED + Style.BRIGHT,
-    }
-
-    def format(self, record):
-        # 添加日志级别的颜色
-        color = self.COLORS.get(record.levelname, Fore.WHITE)
-        record.levelname = f"{color}{record.levelname}{Style.RESET_ALL}"
-        return super().format(record)
+    def emit(self, record):
+        if isinstance(record.msg, dict):
+            msg = record.msg
+            try:
+                record.msg = ""
+                super().emit(record)
+                print_json(data=msg, indent=4)
+            except Exception as e:
+                print(e)
+                record.msg = msg
+                super().emit(record)
+        else:
+            # 对于非字典消息，使用默认处理
+            super().emit(record)
 
 
 # 创建logger
 logger = getLogger("deepsearch")
 logger.setLevel(INFO)
 
-# 创建控制台处理器
-console_handler = StreamHandler()
-console_handler.setLevel(INFO)
-
-# 设置彩色日志格式
-formatter = ColoredFormatter(
-    "%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+# 创建自定义Rich控制台处理器
+rich_handler = ColoredDictLogHandler(
+    console=console, rich_tracebacks=True, show_time=False
 )
-console_handler.setFormatter(formatter)
+rich_handler.setLevel(INFO)
+
+# 设置日志格式
+formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+)
+
+rich_handler.setFormatter(formatter)
 
 # 添加处理器到logger
-logger.addHandler(console_handler)
+logger.addHandler(rich_handler)
+
+
+if __name__ == "__main__":
+    logger.info("Hello, world!")
+
+    logger.info(
+        {
+            "action": "search",
+            "think": "thinking about the query...",
+        }
+    )

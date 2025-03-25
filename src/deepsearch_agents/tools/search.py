@@ -19,9 +19,7 @@ from agents import (
 from deepsearch_agents.log import logger
 from deepsearch_agents.conf import get_configuration
 from deepsearch_agents.context import TaskContext
-from deepsearch_agents.llm.llm import get_response
-from deepsearch_agents.tools._trace import trace
-from ._utils import tool_instructions
+from ._utils import log_action, tool_instructions
 from deepsearch_agents.tools.rewrite import rewrite_search_query
 
 
@@ -54,7 +52,6 @@ class SearchResult(BaseModel):
 
 
 @function_tool()
-@trace()
 async def search(
     ctx: RunContextWrapper[TaskContext], think: str, search_queries: List[str]
 ) -> list[SearchResult]:
@@ -67,11 +64,12 @@ async def search(
         search_queries: Always prefer a single request, only add another request if the original question covers multiple aspects or elements and one search request is definitely not enough, each request focus on one specific aspect of the original question. Minimize mutual information between each request. Maximum 3 search requests.
     """
 
-    print(f"Perform Search. think: {think}, queries: {search_queries}")
+    log_action(ctx, "search", think, search_queries=search_queries)  # type: ignore
     if search_queries is None or len(search_queries) == 0:
         return []
     queries = await rewrite_search_query(ctx.context, search_queries)
-    logger.info(f"Rewrite original query: {search_queries} -> {queries}")
+
+    logger.info(f"Rewrite original query: {search_queries}\n ->\n {queries}")
 
     res: list[SearchResult] = []
     for query in queries.queries:
@@ -79,9 +77,6 @@ async def search(
         res.extend(r)
     reranked_ret = _rerank(res)
 
-    print(
-        f"Perform Search. queries: {search_queries}, search results: {len(res)}, current_task_id: {ctx.context.current_task_id()}"
-    )
     return reranked_ret[:TOTAL_SEARCH_RESULTS]
 
 
