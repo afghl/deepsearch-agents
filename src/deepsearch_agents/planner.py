@@ -24,6 +24,12 @@ def _build_instructions_and_tools(
     ctx: RunContextWrapper[TaskContext], agent: Agent[TaskContext]
 ) -> str:
     tool_names = "\n".join([f"{i}. {tool.name}" for i, tool in enumerate(agent.tools)])
+    curr = ctx.context.current_task()
+    if curr.query == curr.origin_query:
+        question = curr.query
+    else:
+        question = f"The Original Question is: {curr.origin_query}\n And you are currently focusing on this aspect of it. \n You are trying to answer this question: {curr.query}"
+
     return f"""
 Current Date: {ctx.context.start_date_time}
 
@@ -35,10 +41,11 @@ Given a question in any domain, do research to find the answer. Provide a detail
 
 -Rules-
 1. Think step by step, choose the action carefully.
-2. You job is to provide the best answer, So the conversation does not end until the user is satisfied with the answer.
+2. ALWAYS provide a reason for each action you take.
+3. You job is to provide the best answer, So the conversation does not end until the user is satisfied with the answer.
 
 -Question-
-{ctx.context.origin_query}
+{question }
 Using your best knowledge, conversation with the user and lessons learned, answer the user question with absolute certainty.
 
 Here's the actions provided. YOU CAN ONLY chose one of these actions. DON'T use any other actions not listed here.
@@ -173,7 +180,7 @@ class Planner(Agent[TaskContext]):
         for q in question_list:
             task = Task(
                 id=f"{curr.id}_{cnt+1}",
-                origin_query=ctx.context.origin_query,
+                origin_query=curr.origin_query,
                 query=q,
                 level=curr.level + 1,
                 parent=curr,

@@ -21,4 +21,4 @@ models:
     top_p: 1.0
 
 execution:
-  max_task_depth: 1
+  max_task_depth: 2

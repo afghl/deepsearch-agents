@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+from contextlib import asynccontextmanager
 import contextvars
 import uuid
 from agents import (
@@ -47,7 +48,7 @@ class Hooks(PlannerHooks):
 
         async def run():
             # Set the current task id in the context
-            context.context.set_as_current(new_task)
+            new_task.set_as_current()
             p = Planner(
                 name=f"DeepSearch Agent-{new_task.id}",
                 tools=agent.tools,
@@ -115,7 +116,7 @@ async def main():
     print("final output----------\n")
     print(result.final_output)
     print("final answer----------\n")
-    context.final_answer
+    print(context.final_answer())
 
     print("logs----------\n")
 

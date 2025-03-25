@@ -49,8 +49,9 @@ async def rewrite_search_query(
     """
     Rewrites the search query to be more search-engine friendly
     """
-    origin_query = ctx.origin_query
-    query = ctx.current_task().query
+    task = ctx.current_task()
+    origin_query = task.origin_query
+    query = task.query
 
     return await get_response(
         model="rewrite",

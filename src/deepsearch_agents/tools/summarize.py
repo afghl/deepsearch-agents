@@ -13,7 +13,7 @@ Your task is to analyze web page content to gather information to answer the fol
 
 -Guidelines for Analysis-
 
-- Conduct a thorough evaluation of the content's relevance and utility for addressing the inquiry. Document your analytical reasoning in the <reason> field.
+- Conduct a thorough evaluation of the content's relevance and utility for addressing the inquiry. Document your analytical reasoning in the <reason> field. Just give a short reason.
 - For the <summarize> field, You summarize the information in the content to this specific question: {query}. Summary should be concise and to the point. No more than {max_summary_length} sentences.
 - For the <quotes> field, Prioritize direct quotations from the original content when appropriate, while employing thoughtful paraphrasing to enhance clarity when necessary.
 - If the web resource is inaccessible (e.g., 404 error, access restrictions, rate limitations), classify as evaluate="unavailable".
@@ -31,9 +31,7 @@ class SummarizeResult(BaseModel):
 MAX_SUMMARY_LENGTH = 5
 
 
-async def summarize(
-    ctx: TaskContext, query: str, origin_query: str, content: str
-) -> SummarizeResult:
+async def summarize(query: str, origin_query: str, content: str) -> SummarizeResult:
     """
     - Summarize the content of the web page
     """
@@ -41,9 +39,11 @@ async def summarize(
         model="summarize",
         input=content,
         output_type=SummarizeResult,
-        system_instructions=query_content(origin_query, query),
-        query=query,
-        max_summary_length=MAX_SUMMARY_LENGTH,
+        system_instructions=SUMMARIZE_PROMPT.format(
+            query_content=query_content(origin_query, query),
+            query=query,
+            max_summary_length=MAX_SUMMARY_LENGTH,
+        ),
     )
     return ret
 
