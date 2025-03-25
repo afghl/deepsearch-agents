@@ -1,9 +1,8 @@
-from asyncio.log import logger
 from pydantic import BaseModel
 from typing_extensions import TypedDict
 from agents import RunContextWrapper, function_tool
 from typing import Optional
-
+from deepsearch_agents.log import logger
 from deepsearch_agents.context import Answer, TaskContext
 from ._utils import tool_instructions
 

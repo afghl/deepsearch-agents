@@ -20,6 +20,7 @@ from deepsearch_agents.log import logger
 from deepsearch_agents.conf import get_configuration
 from deepsearch_agents.context import TaskContext
 from deepsearch_agents.llm.llm import get_response
+from deepsearch_agents.tools._trace import trace
 from ._utils import tool_instructions
 from deepsearch_agents.tools.rewrite import rewrite_search_query
 
@@ -53,6 +54,7 @@ class SearchResult(BaseModel):
 
 
 @function_tool()
+@trace()
 async def search(
     ctx: RunContextWrapper[TaskContext], think: str, search_queries: List[str]
 ) -> list[SearchResult]:
