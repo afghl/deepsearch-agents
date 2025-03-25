@@ -14,5 +14,8 @@ dependencies = [
     "serpapi>=0.1.5",
 ]
 
+[tool.setuptools]
+package-dir = {"" = "src"}
+
 [tool.setuptools.package-data]
 deepsearch_agents = ["py.typed"]

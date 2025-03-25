@@ -5,7 +5,7 @@ from agents import RunContextWrapper, function_tool
 from typing import Optional
 
 from deepsearch_agents.context import Answer, TaskContext
-from deepsearch_agents.tools._utils import tool_instructions
+from ._utils import tool_instructions
 
 
 def answer_description(ctx: Optional[TaskContext] = None) -> str:
@@ -48,7 +48,7 @@ def answer(
           DO NOT contain any placeholder variables in the final answer.
     """
     logger.info(
-        f"Perform Answer. curr: {ctx.context.current_task().id} Answer: {len(answer)}, references: {len(references)}"
+        f"Perform Answer. think: {think}, curr: {ctx.context.current_task().id} Answer: {len(answer)}, references: {len(references)}"
     )
     curr = ctx.context.current_task()
     curr.answer = Answer(answer=answer)

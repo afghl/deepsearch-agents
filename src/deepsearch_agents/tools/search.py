@@ -20,7 +20,7 @@ from deepsearch_agents.log import logger
 from deepsearch_agents.conf import get_configuration
 from deepsearch_agents.context import TaskContext
 from deepsearch_agents.llm.llm import get_response
-from deepsearch_agents.tools._utils import tool_instructions
+from ._utils import tool_instructions
 from deepsearch_agents.tools.rewrite import rewrite_search_query
 
 
@@ -65,7 +65,7 @@ async def search(
         search_queries: Always prefer a single request, only add another request if the original question covers multiple aspects or elements and one search request is definitely not enough, each request focus on one specific aspect of the original question. Minimize mutual information between each request. Maximum 3 search requests.
     """
 
-    print(f"Perform Search: {search_queries}")
+    print(f"Perform Search. think: {think}, queries: {search_queries}")
     if search_queries is None or len(search_queries) == 0:
         return []
     queries = await rewrite_search_query(ctx.context, search_queries)

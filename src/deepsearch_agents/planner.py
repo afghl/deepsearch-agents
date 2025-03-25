@@ -41,11 +41,12 @@ Given a question in any domain, do research to find the answer. Provide a detail
 
 -Rules-
 1. Think step by step, choose the action carefully.
-2. ALWAYS provide a reason for each action you take.
+2. ALWAYS show your thinking process before taking any action. Explain why you think it helps towards the end goal.
 3. You job is to provide the best answer, So the conversation does not end until the user is satisfied with the answer.
 
 -Question-
-{question }
+{question}
+
 Using your best knowledge, conversation with the user and lessons learned, answer the user question with absolute certainty.
 
 Here's the actions provided. YOU CAN ONLY chose one of these actions. DON'T use any other actions not listed here.

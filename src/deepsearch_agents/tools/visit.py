@@ -8,7 +8,7 @@ from deepsearch_agents.conf import get_configuration
 from deepsearch_agents.log import logger
 from deepsearch_agents.context import Knowledge, TaskContext, build_task_context
 from deepsearch_agents.tools.summarize import SummarizeResult, summarize
-from deepsearch_agents.tools._utils import tool_instructions
+from ._utils import tool_instructions
 
 
 def visit_description(ctx: Optional[TaskContext] = None) -> str:
@@ -37,7 +37,7 @@ async def visit(
     """
     contents: List[SummarizeResult] = []
     logger.info(
-        f"Perform Visit. URLs: {len(urls)}, current_task_id: {ctx.context.current_task_id()}"
+        f"Perform Visit. think: {think}, URLs: {len(urls)}, current_task_id: {ctx.context.current_task_id()}"
     )  # For debugging purposes, remove in production
     urls_to_process = urls[:5]
 

@@ -81,8 +81,20 @@ async def _openai_chat_completion(
         return content
 
 
+_openai_models = [
+    "gpt-4o",
+    "gpt-4o-mini",
+    "o1-preview",
+    "o1",
+    "o1-mini",
+    "o1-preview",
+    "o3-mini",
+    "o3-preview",
+]
+
+
 def openai_model(model_name: str) -> bool:
-    return model_name.startswith("gpt-")
+    return model_name in _openai_models
 
 
 class Answer(BaseModel):
