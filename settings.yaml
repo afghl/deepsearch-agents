@@ -1,0 +1,24 @@
+# OpenAI API 配置
+
+# 模型配置
+models:
+  planner:
+    model_name: "DeepSeek-R1"
+    temperature: 0.7
+    max_tokens: 4000
+    top_p: 1.0
+
+  summarize:
+    model_name: "gpt-4o"
+    temperature: 0.7
+    max_tokens: 4000
+    top_p: 1.0
+
+  rewrite:
+    model_name: "gpt-4o"
+    temperature: 0.7
+    max_tokens: 4000
+    top_p: 1.0
+
+execution:
+  max_task_depth: 1

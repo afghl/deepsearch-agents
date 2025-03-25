@@ -9,11 +9,15 @@ from typing import Any, Callable, Dict, List, Optional, cast
 from agents import (
     Agent,
     AgentHooks,
+    ModelSettings,
     RunContextWrapper,
     Tool,
 )
 
+from deepsearch_agents import conf
+from deepsearch_agents.log import logger
 from deepsearch_agents.context import TaskContext, Task
+from deepsearch_agents.tools import get_tool_instructions
 
 
 def _build_instructions_and_tools(
@@ -46,7 +50,6 @@ Below are the details documentation of each action.
 
 -Action details-
 {get_tool_instructions(ctx.context, agent.tool_names)}
-
 
 """
 
@@ -116,12 +119,16 @@ class Planner(Agent[TaskContext]):
         task_generator: str | None = None,
         planner_hooks: PlannerHooks | None = None,
         hooks: AgentHooks[TaskContext] | None = None,
+        model: str | None = None,
+        model_settings: ModelSettings | None = None,
     ):
         super().__init__(
             name=name,
             instructions=_build_instructions_and_tools,
             tools=tools,
             hooks=_hooks(planner_hooks) if planner_hooks else hooks,
+            model=model,
+            model_settings=model_settings,
         )
         self.task_generator = task_generator
         self.all_tools = tools
@@ -130,13 +137,19 @@ class Planner(Agent[TaskContext]):
         self, ctx: RunContextWrapper[TaskContext], last_used: str | None = None
     ) -> None:
         """
-        Rebuild the tools with the current context.
+        This method updates the available tools for the Planner based on the current context and the last used tool.
+        The method filters out tools that should not be available for the current task. Specifically, it excludes:
+        - The last used tool to avoid immediate repetition.
+        - The task generator tool if the current task depth exceeds the maximum allowed depth.
+
+        The filtered list of tools is then assigned to the Planner's tools attribute.
         """
 
         def forbid(name: str) -> bool:
             return name == last_used or (
-                ctx.context.current_task().level >= MAX_TASK_DEPTH
-                and name == self.task_generator_tool_name
+                ctx.context.current_task().level
+                >= conf.get_configuration().excution_config.max_task_depth
+                and name == self.task_generator
             )
 
         available = [tool for tool in self.all_tools if not forbid(tool.name)]
@@ -148,7 +161,8 @@ class Planner(Agent[TaskContext]):
         """
         Build new tasks from the result.
         """
-        print(f"Build new tasks from result: {result}")
+
+        logger.info(f"Build new tasks from result: {result}")
         tasks = []
         question_list = result.split("|")
         curr = ctx.context.current_task()
@@ -165,7 +179,7 @@ class Planner(Agent[TaskContext]):
                 parent=curr,
             )
             cnt += 1
-            print(
+            logger.info(
                 f"curr: {curr.id} Create new task: {task.id}, ctx: {ctx.context.current_task_id()}"
             )
             curr.sub_tasks[task.id] = task

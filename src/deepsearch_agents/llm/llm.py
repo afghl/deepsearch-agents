@@ -4,7 +4,7 @@ from agents import TResponseInputItem
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
 
-from deepsearch_agents.conf import get_configuration
+from deepsearch_agents.conf import ModelConfig, get_configuration
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -12,8 +12,8 @@ T = TypeVar("T", bound=BaseModel)
 config = get_configuration()
 
 client = AsyncOpenAI(
-    base_url=config.openai_base_url,
-    api_key=config.openai_api_key,
+    base_url=config.openai_base_url if config else None,
+    api_key=config.get_openai_api_key(),
 )
 
 
@@ -44,19 +44,45 @@ async def get_response(
         messages.append({"role": "user", "content": input})
     else:
         messages.extend(input)
+    model_conf = config.get_model_config(model)
+
+    if openai_model(model_conf.model_name):
+        return await _openai_chat_completion(model_conf, messages, output_type)
+    else:
+        raise ValueError(f"Unsupported model: {model}")
+
+
+async def _openai_chat_completion(
+    model_conf: ModelConfig,
+    messages: list[dict[str, str]],
+    output_type: Type[T] | None = None,
+) -> T | str:
     if output_type is not None:
-        res = await client.beta.chat.completions.parse(
-            model=model,
+        response = await client.beta.chat.completions.parse(
+            model=model_conf.model_name,
             messages=messages,  # type: ignore
             response_format=output_type,
+            temperature=model_conf.temperature,
+            max_tokens=model_conf.max_tokens,
+            top_p=model_conf.top_p,
         )
-        return cast(T, res.choices[0].message.parsed)
+        return cast(T, response.choices[0].message.parsed)
     else:
-        res = await client.chat.completions.create(
-            model=model,
+        response = await client.chat.completions.create(
+            model=model_conf.model_name,
             messages=messages,  # type: ignore
+            temperature=model_conf.temperature,
+            max_tokens=model_conf.max_tokens,
+            top_p=model_conf.top_p,
         )
-        return cast(str, res.choices[0].message.content)
+        content = response.choices[0].message.content
+        if content is None:
+            raise ValueError("Empty response from OpenAI")
+        return content
+
+
+def openai_model(model_name: str) -> bool:
+    return model_name.startswith("gpt-")
 
 
 class Answer(BaseModel):
