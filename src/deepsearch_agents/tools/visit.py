@@ -42,20 +42,20 @@ def visit_description(ctx: Optional[TaskContext] = None) -> str:
 tool_instructions["visit"] = visit_description
 
 
-@function_tool(description_override=visit_description())
+@function_tool()
 async def visit(
     ctx: RunContextWrapper[TaskContext],
     urls: List[str],
 ) -> List[SummarizeResult]:
     """
-    _
+    - Access and retrieve comprehensive content from web URLs, including full text, publication metadata, and last updated timestamps.
 
     Args:
         urls: Must be an array of URLs, choose up the most relevant 5 URLs to visit
     """
     contents = []
     print(
-        f"Perform Visit. URLs: {len(urls)}, current_task_id: {Scope.get_current_task_id()}"
+        f"Perform Visit. URLs: {len(urls)}, current_task_id: {ctx.context.get_current_task_id()}"
     )  # For debugging purposes, remove in production
     urls_to_process = urls[:5]
 
@@ -76,7 +76,7 @@ async def visit(
             curr.knowledges.append(Knowledge(reference=url, answer=result))  # type: ignore
 
     print(
-        f"Finished visiting {len(urls_to_process)} URLs. Got {len(contents)} valid contents. Current_task_id: {Scope.get_current_task_id()}"
+        f"Finished visiting {len(urls_to_process)} URLs. Got {len(contents)} valid contents. Current_task_id: {ctx.context.get_current_task_id()}"
     )
 
     return contents

@@ -64,9 +64,9 @@ class PlannerHooks(AgentHooks[TaskContext]):
         pass
 
 
-def _hooks(planner_hooks: PlannerHooks | None) -> AgentHooks[TaskContext]:
+def _hooks(planner_hooks: PlannerHooks | None) -> AgentHooks[TaskContext] | None:
     if not planner_hooks:
-        return
+        return None
 
     async def on_tool_end(
         context: RunContextWrapper[TaskContext],
@@ -87,13 +87,13 @@ def _hooks(planner_hooks: PlannerHooks | None) -> AgentHooks[TaskContext]:
                 ]
             )
 
-    return AgentHooks[TaskContext](
-        on_start=planner_hooks.on_start,
-        on_end=planner_hooks.on_end,
-        on_handoff=planner_hooks.on_handoff,
-        on_tool_start=planner_hooks.on_tool_start,
-        on_tool_end=on_tool_end,
-    )
+    hooks_instance = AgentHooks[TaskContext]()
+    hooks_instance.on_start = planner_hooks.on_start
+    hooks_instance.on_end = planner_hooks.on_end
+    hooks_instance.on_handoff = planner_hooks.on_handoff
+    hooks_instance.on_tool_start = planner_hooks.on_tool_start
+    hooks_instance.on_tool_end = on_tool_end
+    return hooks_instance
 
 
 @dataclass
@@ -119,12 +119,13 @@ class Planner(Agent[TaskContext]):
         tools: List[Tool],
         task_generator: str | None = None,
         planner_hooks: PlannerHooks | None = None,
+        hooks: AgentHooks[TaskContext] | None = None,
     ):
         super().__init__(
             name=name,
             instructions=_build_instructions_and_tools,
             tools=tools,
-            hooks=_hooks(planner_hooks),
+            hooks=_hooks(planner_hooks) if planner_hooks else hooks,
         )
         self.task_generator = task_generator
         self.all_tools = tools
@@ -169,7 +170,7 @@ class Planner(Agent[TaskContext]):
             )
             cnt += 1
             print(
-                f"curr: {curr.id} Create new task: {task.id}, ctx: {Scope.get_current_task_id()}"
+                f"curr: {curr.id} Create new task: {task.id}, ctx: {ctx.context.current_task_id()}"
             )
             curr.sub_tasks[task.id] = task
             ctx.context.tasks[task.id] = task

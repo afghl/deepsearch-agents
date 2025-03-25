@@ -26,7 +26,7 @@ class Reference(TypedDict):
     datetime: str
 
 
-@function_tool(description_override=answer_description)
+@function_tool()
 def answer(
     ctx: RunContextWrapper[TaskContext], references: list[Reference], answer: str
 ) -> str:

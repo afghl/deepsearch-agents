@@ -20,7 +20,7 @@ def reflect_description(ctx: Optional[TaskContext] = None) -> str:
 tool_instructions["reflect"] = reflect_description
 
 
-@function_tool(description_override=reflect_description)
+@function_tool()
 def reflect(
     ctx: RunContextWrapper[TaskContext],
     origin_question: str,
@@ -37,9 +37,6 @@ def reflect(
         questions_to_answer: Reflection and planing, generate a list of most important questions to fill the knowledge gaps to original question.
     """
     print(
-        f"Perform Reflect. Questions to answer: {len(questions_to_answer)}, origin question: {origin_question}, reason: {reason}, current_task_id: {Scope.get_current_task_id()}"
+        f"Perform Reflect. Questions to answer: {len(questions_to_answer)}, origin question: {origin_question}, reason: {reason}, current_task_id: {ctx.context.current_task_id()}"
     )  # For debugging purposes, remove in production
-    # for q in questions_to_answer:
-    #     ctx.context.tasks[q] = Task(q=q)
-    # TODO:
     return "|".join(questions_to_answer)

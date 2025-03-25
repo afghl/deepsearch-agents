@@ -49,7 +49,12 @@ class Hooks(PlannerHooks):
         async def run():
             # Set the current task id in the context
             context.context.set_as_current(new_task)
-            p = Planner(name=f"DeepSearch Agent-{new_task.id}")
+            p = Planner(
+                name=f"DeepSearch Agent-{new_task.id}",
+                tools=agent.tools,
+                task_generator=agent.task_generator,
+                hooks=agent.hooks,
+            )
             p.task_generator_tool_name = "reflect"
             try:
                 await Runner.run(

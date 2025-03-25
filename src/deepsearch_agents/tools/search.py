@@ -51,7 +51,7 @@ class SearchResult(BaseModel):
     source: str | None = None
 
 
-@function_tool(description_override=search_description)
+@function_tool()
 def search(
     ctx: RunContextWrapper[TaskContext], search_queries: List[str]
 ) -> list[SearchResult]:
@@ -84,7 +84,7 @@ def search(
     reranked_ret = rerank(res)
 
     print(
-        f"Perform Search. queries: {search_queries}, search results: {len(res)}, current_task_id: {Scope.get_current_task_id()}"
+        f"Perform Search. queries: {search_queries}, search results: {len(res)}, current_task_id: {ctx.context.current_task_id()}"
     )
     return reranked_ret
 
