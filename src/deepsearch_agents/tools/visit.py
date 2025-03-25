@@ -27,7 +27,7 @@ async def visit(
     ctx: RunContextWrapper[TaskContext],
     think: str,
     urls: List[str],
-) -> List[SummarizeResult]:
+) -> str:
     """
     - Visit the URLs and extract useful content for the query
 
@@ -66,9 +66,7 @@ async def visit(
                 f"URL {url}, something wrong with the content, {result.reason}"
             )
 
-    content_str = "\n".join(
-        [f"URL: {c.reference}\nSummary: {c.summarize}\n" for c in contents]
-    )
+    content_str = "\n".join([f"Summary: {c.summarize}\n" for c in contents])
     if len(contents) > 0:
         ret = f"""
         Successfully visited {len(urls_to_process)} URLs, {len(contents)} of them contain clues to answer the question.
