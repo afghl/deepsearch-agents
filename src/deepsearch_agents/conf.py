@@ -50,6 +50,9 @@ class ExecutionConfig:
     max_task_depth: int = 1
     """Maximum depth for nested task execution"""
 
+    max_token_usage: int = 100_000
+    """Maximum token usage for the execution"""
+
 
 @dataclass
 class Configuration:

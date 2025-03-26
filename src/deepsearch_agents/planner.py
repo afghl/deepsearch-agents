@@ -30,7 +30,8 @@ def _build_instructions_and_tools(
     else:
         question = f"The Original Question is: {curr.origin_query}\n And you are currently focusing on this aspect of it. \n You are trying to answer this question: {curr.query}"
 
-    return f"""
+    if not agent._running_out_of_token(ctx):
+        return f"""
 Current Date: {ctx.context.start_date_time}
 
 You are an advanced AI research agent from Deepsearch AI. You are specialized in multistep reasoning. 
@@ -41,7 +42,7 @@ Given a question in any domain, do research to find the answer. Provide a detail
 
 -Rules-
 1. Think step by step, choose the action carefully.
-2. ALWAYS show your thinking process before taking any action. Explain why you think it helps towards the end goal.
+2. ALWAYS show your thinking process before taking any action. Reflect on what you have already known first, 
 3. You job is to provide the best answer, So the conversation does not end until the user is satisfied with the answer.
 
 -Question-
@@ -59,6 +60,17 @@ Below are the details documentation of each action.
 -Action details-
 {get_tool_instructions(ctx.context, agent.tool_names)}
 
+"""
+    else:
+        return f"""Current Date: {ctx.context.start_date_time}
+
+You are an advanced AI research agent from Deepsearch AI. You are specialized in multistep reasoning. 
+Using your best knowledge, conversation with the user and lessons learned, answer the user question with absolute certainty.
+
+-Question-
+{ctx.context.current_task().query}
+
+Using your best knowledge, answer the user question with absolute certainty.
 """
 
 
@@ -201,3 +213,9 @@ class Planner(Agent[TaskContext]):
     @property
     def tool_names(self) -> List[str]:
         return [tool.name for tool in self.tools]
+
+    def _running_out_of_token(self, ctx: RunContextWrapper[TaskContext]) -> bool:
+        return (
+            ctx.usage.total_tokens
+            > conf.get_configuration().excution_config.max_token_usage * 0.85
+        )

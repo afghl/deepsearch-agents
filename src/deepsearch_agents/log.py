@@ -25,7 +25,6 @@ class ColoredDictLogHandler(RichHandler):
                 record.msg = msg
                 super().emit(record)
         else:
-            # 对于非字典消息，使用默认处理
             super().emit(record)
 
 
@@ -40,9 +39,7 @@ rich_handler = ColoredDictLogHandler(
 rich_handler.setLevel(INFO)
 
 # 设置日志格式
-formatter = logging.Formatter(
-    "%(asctime)s - %(name)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
-)
+formatter = logging.Formatter("%(asctime)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 
 rich_handler.setFormatter(formatter)
 

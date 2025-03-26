@@ -1,4 +1,5 @@
 from typing import List, Literal
+from agents import RunContextWrapper
 from pydantic import BaseModel
 
 from deepsearch_agents.context import TaskContext
@@ -31,7 +32,9 @@ class SummarizeResult(BaseModel):
 MAX_SUMMARY_LENGTH = 5
 
 
-async def summarize(query: str, origin_query: str, content: str) -> SummarizeResult:
+async def summarize(
+    ctx: RunContextWrapper[TaskContext], query: str, origin_query: str, content: str
+) -> SummarizeResult:
     """
     - Summarize the content of the web page
     """
@@ -45,7 +48,8 @@ async def summarize(query: str, origin_query: str, content: str) -> SummarizeRes
             max_summary_length=MAX_SUMMARY_LENGTH,
         ),
     )
-    return ret
+    ctx.usage.add(ret.usage)
+    return ret.response
 
 
 def query_content(origin_query: str, query: str) -> str:

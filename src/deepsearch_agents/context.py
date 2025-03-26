@@ -21,6 +21,7 @@ class Evaluation:
 class Answer:
     evaluation: Evaluation | None = None
     answer: str | None = None
+    # TODO: need this ?
     references: List[str] = field(default_factory=list)
 
 

@@ -27,6 +27,14 @@ class Hooks(PlannerHooks):
         super().__init__()
         self.conf = conf
 
+    async def on_tool_start(
+        self,
+        ctx: RunContextWrapper[TaskContext],
+        agent: Agent[TaskContext],
+        tool: Tool,
+    ) -> None:
+        ctx.context.current_task().turn += 1
+
     async def on_tool_end(
         self,
         ctx: RunContextWrapper[TaskContext],
@@ -34,9 +42,7 @@ class Hooks(PlannerHooks):
         tool: Tool,
         result: str,
     ) -> None:
-        logger.info(
-            f"tool: {tool.name} end current task: {ctx.context.current_task_id()}"
-        )
+        logger.info(f"finish action {tool.name} ")
         agent.rebuild_tools(ctx)
 
     async def on_new_task_generated(
@@ -113,12 +119,12 @@ async def main():
         run_config=conf,
     )
     new_trace.finish()
-    print("final output----------\n")
-    print(result.final_output)
-    print("final answer----------\n")
-    print(context.final_answer())
+    logger.info("final output----------\n")
+    logger.info(result.final_output)
+    logger.info("final answer----------\n")
+    logger.info(context.final_answer())
 
-    print("logs----------\n")
+    logger.info("logs----------\n")
 
 
 if __name__ == "__main__":

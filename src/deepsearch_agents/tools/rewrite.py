@@ -1,3 +1,4 @@
+from agents import RunContextWrapper
 from pydantic import BaseModel
 from deepsearch_agents.context import TaskContext
 from deepsearch_agents.llm.llm import get_response
@@ -44,16 +45,16 @@ class SearchQueries(BaseModel):
 
 
 async def rewrite_search_query(
-    ctx: TaskContext, to_rewrite: list[str]
+    ctx: RunContextWrapper[TaskContext], to_rewrite: list[str]
 ) -> SearchQueries:
     """
     Rewrites the search query to be more search-engine friendly
     """
-    task = ctx.current_task()
+    task = ctx.context.current_task()
     origin_query = task.origin_query
     query = task.query
 
-    return await get_response(
+    llm_response = await get_response(
         model="rewrite",
         input=SEARCH_REWRITE_PROMPT.format(
             origin_query=origin_query,
@@ -64,3 +65,5 @@ async def rewrite_search_query(
         output_type=SearchQueries,
         system_instructions=SEARCH_REWRITE_INSTRUCTIONS,
     )
+    ctx.usage.add(llm_response.usage)
+    return llm_response.response

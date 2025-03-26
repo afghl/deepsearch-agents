@@ -43,7 +43,7 @@ async def visit(
     tasks = []
 
     for url in urls_to_process:
-        tasks.append(visit_url_and_summarize(ctx.context, url))
+        tasks.append(visit_url_and_summarize(ctx, url))
 
     # 并发执行所有任务
     results: List[SummarizeResult | BaseException] = await asyncio.gather(
@@ -79,7 +79,9 @@ async def visit(
     return ret
 
 
-async def visit_url_and_summarize(ctx: TaskContext, url: str) -> SummarizeResult:
+async def visit_url_and_summarize(
+    ctx: RunContextWrapper[TaskContext], url: str
+) -> SummarizeResult:
     """
     - Crawl and read full content from URLs
     """
@@ -88,10 +90,10 @@ async def visit_url_and_summarize(ctx: TaskContext, url: str) -> SummarizeResult
     headers = {"Authorization": f"Bearer {config.jina_api_key}"}
     response = requests.get(url, headers=headers)
 
-    task = ctx.current_task()
+    task = ctx.context.current_task()
     origin_query = task.origin_query
     query = task.query
-    summarize_result = await summarize(query, origin_query, response.text)
+    summarize_result = await summarize(ctx.context, query, origin_query, response.text)
     return summarize_result
 
 

@@ -67,7 +67,7 @@ async def search(
     log_action(ctx, "search", think, search_queries=search_queries)  # type: ignore
     if search_queries is None or len(search_queries) == 0:
         return []
-    queries = await rewrite_search_query(ctx.context, search_queries)
+    queries = await rewrite_search_query(ctx, search_queries)
 
     logger.info(f"Rewrite original query: {search_queries}\n ->\n {queries}")
 
