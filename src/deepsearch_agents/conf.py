@@ -18,13 +18,13 @@ class ModelConfig:
     model_name: str
     """Name of the model (e.g., 'gpt-4', 'gpt-3.5-turbo')"""
 
-    temperature: float
-    """Controls randomness in the model's output (0.0 to 1.0)"""
-
     max_tokens: int
     """Maximum number of tokens to generate in the response"""
 
-    top_p: float
+    temperature: float | None = None
+    """Controls randomness in the model's output (0.0 to 2.0)"""
+
+    top_p: float | None = None
     """Controls diversity via nucleus sampling (0.0 to 1.0)"""
 
     def as_model_settings(self) -> ModelSettings:
