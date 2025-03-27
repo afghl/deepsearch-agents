@@ -42,7 +42,7 @@ class Hooks(AgentHooks[TaskContext]):
         tool: Tool,
         result: str,
     ) -> None:
-        logger.info(f"finish action {tool.name} ")
+        logger.info(f"finish action {tool.name} result: {result}")
         agent.rebuild_tools(ctx)
 
 
@@ -74,13 +74,13 @@ async def main():
             model_settings=planner_conf.as_model_settings(),
         )
 
-        await Runner.run(
+        ret = await Runner.run(
             starting_agent=planner,
             input=q,
             context=context,
             max_turns=config.execution_config.max_turns,
         )
-
+    logger.info(ret.final_output)
     logger.info("final answer----------\n")
     logger.info(context.final_answer())
 

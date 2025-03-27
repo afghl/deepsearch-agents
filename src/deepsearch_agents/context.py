@@ -50,7 +50,7 @@ class Knowledge(BaseModel):
 
 
 _list_out_knowledge_template = """
-{i+1}. I visited this website: {knowledge.reference}. \nHere is the answer I got: \n{knowledge.answer}, \nAnd some quotes are: \n{knowledge.quotes}
+{i}. I visited this website: {knowledge.reference}. \nHere is the answer I got: \n{knowledge.summary}, \nAnd some quotes are: \n{knowledge.quotes}
 """
 
 
@@ -80,7 +80,7 @@ class Task:
             [
                 template.format(
                     knowledge=knowledge,
-                    i=i,
+                    i=i + 1,
                 )
                 for i, knowledge in enumerate(self.knowledges)
             ]
