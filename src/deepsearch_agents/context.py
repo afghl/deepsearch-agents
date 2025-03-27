@@ -60,7 +60,7 @@ class Task:
     query: str
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:6])
     level: int = 1
-    turn: int = 1
+    turn: int = 0
     parent: "Task | None" = None
     sub_tasks: Dict[str, "Task"] = field(default_factory=dict)
     progress: List[str] = field(default_factory=list)

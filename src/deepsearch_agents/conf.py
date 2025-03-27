@@ -31,6 +31,9 @@ class ModelConfig:
     tool_choice: str | None = None
     """The tool choice to use when calling the model."""
 
+    parallel_tool_calls: bool | None = None
+    """Whether to use parallel tool calls when calling the model."""
+
     def as_model_settings(self) -> ModelSettings:
         """
         Converts ModelConfig to ModelSettings format used by the agents framework.
@@ -43,6 +46,7 @@ class ModelConfig:
             max_tokens=self.max_tokens,
             top_p=self.top_p,
             tool_choice=self.tool_choice,
+            parallel_tool_calls=self.parallel_tool_calls,
         )
 
 

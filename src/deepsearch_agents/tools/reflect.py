@@ -36,7 +36,7 @@ def reflect(
     Args:
         think: Based on the original question and the context, think about the knowledge gaps and what you need to know to answer the question. Explain the reason why you need to ask these questions, why would it help towards the end goal.
         origin_question: The original question you are trying to answer.
-        questions_to_answer: Reflection and planing, generate a list of most important questions to fill the knowledge gaps to original question.
+        questions_to_answer: Reflection and planing, generate a list of most important questions to fill the knowledge gaps to original question. Maximun 3 questions.
     """
     log_action(ctx, "reflect", think, origin_question=origin_question, questions_to_answer=questions_to_answer)  # type: ignore
-    return sep.join(questions_to_answer)
+    return sep.join(questions_to_answer[:3])

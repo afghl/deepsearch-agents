@@ -91,50 +91,6 @@ Base on the background information, take a best try, answer the question.
 """
 
 
-class PlannerHooks(AgentHooks[TaskContext]):
-
-    @abstractmethod
-    async def on_new_task_generated(
-        self, context: RunContextWrapper[TaskContext], agent: "Planner", task: Task
-    ) -> None:
-        pass
-
-
-def _hooks(planner_hooks: PlannerHooks | None) -> AgentHooks[TaskContext] | None:
-    """
-    This function creates a new hooks instance that extends the original hooks with the planner hooks.
-    """
-    if not planner_hooks:
-        return None
-
-    async def on_tool_end(
-        context: RunContextWrapper[TaskContext],
-        agent: Agent[TaskContext],
-        tool: Tool,
-        result: str,
-    ) -> None:
-        # First call the original hooks' on_tool_end
-        await planner_hooks.on_tool_end(context, agent, tool, result)
-
-        planner = cast(Planner, agent)
-        if tool.name == planner.task_generator and result:
-            new_tasks = planner._build_new_tasks(context, result)
-            await asyncio.gather(
-                *[
-                    planner_hooks.on_new_task_generated(context, planner, task)
-                    for task in new_tasks
-                ]
-            )
-
-    hooks_instance = AgentHooks[TaskContext]()
-    hooks_instance.on_start = planner_hooks.on_start
-    hooks_instance.on_end = planner_hooks.on_end
-    hooks_instance.on_handoff = planner_hooks.on_handoff
-    hooks_instance.on_tool_start = planner_hooks.on_tool_start
-    hooks_instance.on_tool_end = on_tool_end
-    return hooks_instance
-
-
 @dataclass
 class Planner(Agent[TaskContext]):
     """
@@ -172,7 +128,7 @@ class Planner(Agent[TaskContext]):
         self.task_generator = task_generator
         if task_generator:
             self._build_task_generate_tool()
-        self.all_tools = tools
+        self.all_tools = self.tools  # type: ignore
 
     def rebuild_tools(
         self, ctx: RunContextWrapper[TaskContext], last_used: str | None = None
@@ -243,21 +199,19 @@ class Planner(Agent[TaskContext]):
         )
 
     def _build_task_generate_tool(self) -> None:
-        original_tool = next(
-            tool for tool in self.tools if tool.name == self.task_generator
-        )
+        tool = next(tool for tool in self.tools if tool.name == self.task_generator)
+        if not tool:
+            return
         assert isinstance(
-            original_tool, FunctionTool
+            tool, FunctionTool
         ), f"Task generator tool {self.task_generator} must be a FunctionTool"
 
         async def execute_task(ctx: RunContextWrapper[TaskContext], input: str) -> str:
-            ret = await original_tool.on_invoke_tool(ctx, input)
+            ret = await tool.on_invoke_tool(ctx, input)
             if not ret:
                 return "No new tasks generated."
             tasks = self._build_new_tasks(ctx, ret)
-            await asyncio.create_task(
-                *[self._execute_sub_task(ctx, task) for task in tasks]
-            )
+            await asyncio.gather(*[self._execute_sub_task(ctx, task) for task in tasks])
             return "\n".join(
                 [
                     (
@@ -273,11 +227,11 @@ class Planner(Agent[TaskContext]):
         self.tools = [tool for tool in self.tools if tool.name != self.task_generator]
         self.tools.append(
             FunctionTool(
-                name=original_tool.name,
-                description=original_tool.description,
-                params_json_schema=original_tool.params_json_schema,
+                name=tool.name,
+                description=tool.description,
+                params_json_schema=tool.params_json_schema,
                 on_invoke_tool=execute_task,
-                strict_json_schema=original_tool.strict_json_schema,
+                strict_json_schema=tool.strict_json_schema,
             )
         )
 

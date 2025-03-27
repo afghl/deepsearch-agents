@@ -21,11 +21,17 @@ from deepsearch_agents.log import logger
 from deepsearch_agents.conf import get_configuration
 from deepsearch_agents.context import Task, TaskContext, build_task_context
 
-from deepsearch_agents.planner import Planner, PlannerHooks
+from deepsearch_agents.planner import Planner
 from deepsearch_agents.tools import answer, reflect, search, visit
 
 
 class Hooks(AgentHooks[TaskContext]):
+    async def on_start(
+        self,
+        ctx: RunContextWrapper[TaskContext],
+        agent: Agent[TaskContext],
+    ) -> None:
+        agent.rebuild_tools(ctx)
 
     async def on_tool_start(
         self,
