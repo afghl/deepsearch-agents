@@ -70,6 +70,7 @@ Think step by step, choose the action carefully.
         logger.info(
             f"We are running out of token, take a best try to answer the question."
         )
+        agent.model_settings.tool_choice = "auto"
         return f"""Current Date: {ctx.context.start_date_time}
 
 You are an advanced AI research agent from Deepsearch AI. You are specialized in multistep reasoning. 

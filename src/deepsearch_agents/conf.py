@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 import os
+from typing import Literal
 from agents import ModelSettings
 import yaml
 
@@ -27,6 +28,9 @@ class ModelConfig:
     top_p: float | None = None
     """Controls diversity via nucleus sampling (0.0 to 1.0)"""
 
+    tool_choice: str | None = None
+    """The tool choice to use when calling the model."""
+
     def as_model_settings(self) -> ModelSettings:
         """
         Converts ModelConfig to ModelSettings format used by the agents framework.
@@ -38,6 +42,7 @@ class ModelConfig:
             temperature=self.temperature,
             max_tokens=self.max_tokens,
             top_p=self.top_p,
+            tool_choice=self.tool_choice,
         )
 
 
@@ -56,7 +61,7 @@ class ExecutionConfig:
     max_turns: int = 15
     """Maximum number of turns for the execution"""
 
-    max_critical_attempts: int = 3
+    max_critical_attempts: int = 2
     """Maximum number of critical attempts for the execution"""
 
 

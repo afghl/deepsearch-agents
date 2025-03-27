@@ -43,7 +43,7 @@ class Hooks(AgentHooks[TaskContext]):
         result: str,
     ) -> None:
         logger.info(f"finish action {tool.name} result: {result}")
-        agent.rebuild_tools(ctx)
+        agent.rebuild_tools(ctx, tool.name)
 
 
 async def main():
@@ -60,11 +60,13 @@ async def main():
     # args = parser.parse_args()
     # q = args.query.strip()
     q = "How has the SPX performed in the last 30 days? What specific reasons have driven the market recently?"
-    logger.info(f"query: {q}")
+    logger.info(f"query: {q} ")
     trace_id = gen_trace_id()
+
     with trace(workflow_name="deepsearch", trace_id=trace_id):
         context = build_task_context(q)
         planner_conf = config.get_model_config("planner")
+        logger.info(f"planner_conf: {planner_conf}")
         planner = Planner(
             name="DeepSearch Agent",
             tools=[search, visit, answer, reflect],
