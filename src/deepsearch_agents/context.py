@@ -12,23 +12,46 @@ _current_task_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
 )
 
 
-@dataclass
-class Evaluation:
-    pass
+class Evaluation(BaseModel):
+    reason: str
+    is_pass: bool
+    critic: str
+    improvement: str
 
 
-@dataclass
-class Answer:
+class Reference(BaseModel):
+    url: str
+    datetime: str | None
+
+    def __str__(self) -> str:
+        return self.model_dump_json()
+
+
+class Answer(BaseModel):
+    "The final answer to the question."
+
     evaluation: Evaluation | None = None
     answer: str | None = None
-    # TODO: need this ?
-    references: List[str] = field(default_factory=list)
+    references: List[Reference] = field(default_factory=list)
 
 
 class Knowledge(BaseModel):
-    reference: str
-    answer: str
+    "A piece of knowledge is an answer found by an agent to a certain aspect of a question, from outside sources."
+
+    reference: Reference
+    "The source of the knowledge."
+    summary: str
+    "How the reference answers the question."
     quotes: List[str]
+    "Quotes from the reference that support the answer."
+
+    def __str__(self) -> str:
+        return self.model_dump_json()
+
+
+_list_out_knowledge_template = """
+{i+1}. I visited this website: {knowledge.reference}. \nHere is the answer I got: \n{knowledge.answer}, \nAnd some quotes are: \n{knowledge.quotes}
+"""
 
 
 @dataclass
@@ -36,7 +59,6 @@ class Task:
     origin_query: str
     query: str
     id: str = field(default_factory=lambda: uuid.uuid4().hex)
-    status: Literal["unresolved", "solved", "failed"] = "unresolved"
     level: int = 1
     turn: int = 1
     parent: "Task | None" = None
@@ -44,10 +66,25 @@ class Task:
     progress: List[str] = field(default_factory=list)
     knowledges: List[Knowledge] = field(default_factory=list)
     answer: Answer | None = None
+    attempt: int = 0
+
+    def is_origin_query(self) -> bool:
+        return self.origin_query == self.query
 
     def set_as_current(self) -> contextvars.Token:
         """Set the current task as the current task"""
         return _current_task_id.set(self.id)
+
+    def list_out_knowledge(self, template: str = _list_out_knowledge_template) -> str:
+        return "\n\n".join(
+            [
+                template.format(
+                    knowledge=knowledge,
+                    i=i,
+                )
+                for i, knowledge in enumerate(self.knowledges)
+            ]
+        )
 
 
 @dataclass

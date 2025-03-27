@@ -112,7 +112,7 @@ async def main():
             starting_agent=planner,
             input=q,
             context=context,
-            max_turns=config.excution_config.max_turns,
+            max_turns=config.execution_config.max_turns,
             run_config=conf,
         )
     logger.info("final output----------\n")

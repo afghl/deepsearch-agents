@@ -189,7 +189,7 @@ class Planner(Agent[TaskContext]):
         def forbid(name: str) -> bool:
             return name == last_used or (
                 ctx.context.current_task().level
-                >= conf.get_configuration().excution_config.max_task_depth
+                >= conf.get_configuration().execution_config.max_task_depth
                 and name == self.task_generator
             )
 
@@ -235,5 +235,5 @@ class Planner(Agent[TaskContext]):
     def _running_out_of_token(self, ctx: RunContextWrapper[TaskContext]) -> bool:
         return (
             ctx.usage.total_tokens
-            > conf.get_configuration().excution_config.max_token_usage * 0.85
+            > conf.get_configuration().execution_config.max_token_usage * 0.85
         )

@@ -56,6 +56,9 @@ class ExecutionConfig:
     max_turns: int = 15
     """Maximum number of turns for the execution"""
 
+    max_critical_attempts: int = 3
+    """Maximum number of critical attempts for the execution"""
+
 
 @dataclass
 class Configuration:
@@ -81,7 +84,7 @@ class Configuration:
     serpapi_api_key: str
     """API key for SerpAPI service"""
 
-    excution_config: ExecutionConfig = field(default_factory=ExecutionConfig)
+    execution_config: ExecutionConfig = field(default_factory=ExecutionConfig)
     """Configuration for execution settings"""
 
     model_settings: dict[str, ModelConfig] | None = None
@@ -103,7 +106,7 @@ class Configuration:
             model_name: ModelConfig(**model_config)
             for model_name, model_config in yaml_data["models"].items()
         }
-        self.excution_config = ExecutionConfig(**yaml_data["execution"])
+        self.execution_config = ExecutionConfig(**yaml_data["execution"])
 
     def get_model_config(self, model_name: str) -> ModelConfig:
         """
