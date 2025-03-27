@@ -1,10 +1,8 @@
 from abc import abstractmethod
 import asyncio
-import contextvars
 from dataclasses import dataclass, field
 import json
-import time
-from typing import Any, Callable, Dict, List, Optional, cast
+from typing import List, cast
 
 from agents import (
     Agent,
@@ -17,7 +15,7 @@ from agents import (
 from deepsearch_agents import conf
 from deepsearch_agents.log import logger
 from deepsearch_agents.context import TaskContext, Task
-from deepsearch_agents.tools import get_tool_instructions
+from deepsearch_agents.tools import get_tool_instructions, sep
 
 
 def _build_instructions_and_tools(
@@ -179,6 +177,7 @@ class Planner(Agent[TaskContext]):
         The method filters out tools that should not be available for the current task. Specifically, it excludes:
         - The last used tool to avoid immediate repetition.
         - The task generator tool if the current task depth exceeds the maximum allowed depth.
+        - If the agent is running out of tokens, it returns the answer action exclusively.
 
         The filtered list of tools is then assigned to the Planner's tools attribute.
         """
@@ -205,7 +204,7 @@ class Planner(Agent[TaskContext]):
 
         logger.info(f"Build new tasks from result: {result}")
         tasks = []
-        question_list = result.split("|")
+        question_list = result.split(sep)
         curr = ctx.context.current_task()
         if isinstance(question_list, str):
             question_list = json.loads(question_list)

@@ -5,6 +5,8 @@ from deepsearch_agents.context import TaskContext
 from deepsearch_agents.log import logger
 from ._utils import log_action, tool_instructions
 
+sep = "<|sub_task_separator|>"
+
 
 def reflect_description(ctx: Optional[TaskContext] = None) -> str:
     return f"""
@@ -37,4 +39,4 @@ def reflect(
         questions_to_answer: Reflection and planing, generate a list of most important questions to fill the knowledge gaps to original question.
     """
     log_action(ctx, "reflect", think, origin_question=origin_question, questions_to_answer=questions_to_answer)  # type: ignore
-    return "|".join(questions_to_answer)
+    return sep.join(questions_to_answer)
