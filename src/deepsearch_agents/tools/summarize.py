@@ -19,6 +19,7 @@ Your task is to analyze web page content to gather information to answer the fol
 - For the <quotes> field, Prioritize direct quotations from the original content when appropriate, while employing thoughtful paraphrasing to enhance clarity when necessary.
 - If the web resource is inaccessible (e.g., 404 error, access restrictions, rate limitations), classify as evaluate="unavailable".
 - If the content lacks relevance to the inquiry after careful analysis, classify as evaluate="not_related".
+- See if you can infer the publication date of this content based on the original text, and if possible, return it in <datetime>. format like "2024-01-01".
 """
 
 
@@ -26,6 +27,7 @@ class SummarizeResult(BaseModel):
     reason: str
     summarize: str
     quotes: List[str]
+    datetime: str | None
     evaluate: Literal["useful", "not_related", "unavailable"]
 
 

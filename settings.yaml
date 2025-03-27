@@ -20,7 +20,13 @@ models:
     max_tokens: 4000
     top_p: 1.0
 
+  evaluate:
+    model_name: "gpt-4o"
+    temperature: 0.7
+    max_tokens: 10000
+    top_p: 1.0
+
 execution:
   max_task_depth: 2
-  max_token_usage: 100000
+  max_token_usage: 150000
   max_turns: 15

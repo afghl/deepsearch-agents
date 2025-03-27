@@ -6,7 +6,12 @@ from agents import RunContextWrapper, function_tool
 
 from deepsearch_agents.conf import get_configuration
 from deepsearch_agents.log import logger
-from deepsearch_agents.context import Knowledge, TaskContext, build_task_context
+from deepsearch_agents.context import (
+    Knowledge,
+    Reference,
+    TaskContext,
+    build_task_context,
+)
 from deepsearch_agents.tools.summarize import SummarizeResult, summarize
 from ._utils import log_action, tool_instructions
 
@@ -35,7 +40,7 @@ async def visit(
         think: A very concise explain of why choose to visit these URLs.
         urls: Must be an array of URLs, choose up to 5 URLs to visit
     """
-    contents: List[SummarizeResult] = []
+    knowledges: List[Knowledge] = []
     log_action(ctx, "visit", think, urls=urls)  # type: ignore
     urls_to_process = urls[:5]
 
@@ -54,29 +59,38 @@ async def visit(
         if isinstance(result, BaseException):
             logger.error(f"Error processing URL {url}: {result}")
         elif result and result.evaluate == "useful":
-            contents.append(result)
-            curr = ctx.context.current_task()
-            curr.knowledges.append(
-                Knowledge(reference=url, answer=result.summarize, quotes=result.quotes)
+            knowledges.append(
+                Knowledge(
+                    reference=Reference(
+                        url=url,
+                        datetime=result.datetime,
+                    ),
+                    summary=result.summarize,
+                    quotes=result.quotes,
+                )
             )
         else:
             logger.warning(
                 f"URL {url}, something wrong with the content, {result.reason}"
             )
 
-    content_str = "\n".join([f"Summary: {c.summarize}\n" for c in contents])
-    if len(contents) > 0:
-        ret = f"""
-        Successfully visited {len(urls_to_process)} URLs, {len(contents)} of them contain clues to answer the question.
+    ctx.context.current_task().knowledges.extend(knowledges)
+    content_str = "\n".join(
+        [
+            f"URL: {k.reference.url}\nPublication Date: {k.reference.datetime}\nSummary: {k.summary}"
+            for k in knowledges
+        ]
+    )
+    if len(knowledges) > 0:
+        return f"""
+        Successfully visited {len(urls_to_process)} URLs, {len(knowledges)} of them contain clues to answer the question.
         Here are the details:
         {content_str}
         """
     else:
-        ret = f"""
+        return f"""
         Try to visit {len(urls_to_process)} URLs, but found nothing useful. Maybe try another set of URLs.
         """
-
-    return ret
 
 
 async def visit_url_and_summarize(

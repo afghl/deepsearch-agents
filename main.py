@@ -108,15 +108,14 @@ async def main():
             model_settings=planner_conf.as_model_settings(),
         )
 
-        result = await Runner.run(
+        await Runner.run(
             starting_agent=planner,
             input=q,
             context=context,
-            max_turns=config.excution_config.max_turns,
+            max_turns=config.execution_config.max_turns,
             run_config=conf,
         )
-    logger.info("final output----------\n")
-    logger.info(result.final_output)
+
     logger.info("final answer----------\n")
     logger.info(context.final_answer())
 

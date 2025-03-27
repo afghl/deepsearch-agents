@@ -58,7 +58,7 @@ def log_action(
 
     usage = ctx.usage
     percent = (
-        usage.total_tokens / conf.get_configuration().excution_config.max_token_usage
+        usage.total_tokens / conf.get_configuration().execution_config.max_token_usage
     )
     logger.info(
         f"Task: {ctx.context.current_task_id()}, Turn: {ctx.context.current_task().turn} token_usage: {ctx.usage.total_tokens} ({percent:.2%}) Taking action: "
