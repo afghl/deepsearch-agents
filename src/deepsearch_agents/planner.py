@@ -26,7 +26,7 @@ def _build_instructions_and_tools(
     tool_names = "\n".join([f"{i}. {tool.name}" for i, tool in enumerate(agent.tools)])
     curr = ctx.context.current_task()
     if curr.query == curr.origin_query:
-        question = curr.query
+        question = f"The Question you are trying to answer is: {curr.query}"
     else:
         question = f"The Original Question is: {curr.origin_query}\n And you are currently focusing on this aspect of it. \n You are trying to answer this question: {curr.query}"
 
@@ -38,39 +38,54 @@ You are an advanced AI research agent from Deepsearch AI. You are specialized in
 Using your best knowledge, conversation with the user and lessons learned, answer the user question with absolute certainty.
 
 -Goal-
+
 Given a question in any domain, do research to find the answer. Provide a detailed, comprehensive and factually accurate answer.
 
 -Rules-
+
 1. Think step by step, choose the action carefully.
-2. ALWAYS show your thinking process before taking any action. Reflect on what you have already known first, 
-3. You job is to provide the best answer, So the conversation does not end until the user is satisfied with the answer.
+2. ALWAYS show your thinking process before taking any action. Reflect on what you have already known first, and then explain the reason on your next move.
+3. No rush to answer the question, Examine the question and the evidence carefully before answering.
+4. You job is to provide the best answer, So the conversation does not end until the user is satisfied with the answer.
 
 -Question-
 {question}
 
-Using your best knowledge, conversation with the user and lessons learned, answer the user question with absolute certainty.
-
-Here's the actions provided. YOU CAN ONLY chose one of these actions. DON'T use any other actions not listed here.
-
 -Available actions-
+
+Here's the actions provided. YOU CAN ONLY chose one of these actions. DON'T use any other actions not listed here:
+
 {tool_names}
+
+-Action details-
 
 Below are the details documentation of each action.
 
--Action details-
 {get_tool_instructions(ctx.context, agent.tool_names)}
 
+Think step by step, choose the action carefully.
 """
     else:
+        logger.info(
+            f"We are running out of token, take a best try to answer the question."
+        )
         return f"""Current Date: {ctx.context.start_date_time}
 
 You are an advanced AI research agent from Deepsearch AI. You are specialized in multistep reasoning. 
 Using your best knowledge, conversation with the user and lessons learned, answer the user question with absolute certainty.
 
 -Question-
-{ctx.context.current_task().query}
+{curr.origin_query}
 
-Using your best knowledge, answer the user question with absolute certainty.
+-Goals-
+- Don't hesitate, just respond!
+- Partial responses are fine, but make sure they're well-informed.
+- Feel free to refer to our previous conversations if it helps.
+- When unsure, base your response on what we know so far.
+
+Let's keep things smooth and on track.
+
+Base on the background information, take a best try, answer the question. 
 """
 
 
@@ -167,6 +182,9 @@ class Planner(Agent[TaskContext]):
 
         The filtered list of tools is then assigned to the Planner's tools attribute.
         """
+        if self._is_running_out_of_token(ctx):
+            self.tools = [tool for tool in self.all_tools if tool.name == "answer"]
+            return
 
         def forbid(name: str) -> bool:
             return name == last_used or (

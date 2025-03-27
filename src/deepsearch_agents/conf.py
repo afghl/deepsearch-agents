@@ -47,11 +47,14 @@ class ExecutionConfig:
     Configuration class for execution settings.
     """
 
-    max_task_depth: int = 1
+    max_task_depth: int = 2
     """Maximum depth for nested task execution"""
 
     max_token_usage: int = 100_000
     """Maximum token usage for the execution"""
+
+    max_turns: int = 15
+    """Maximum number of turns for the execution"""
 
 
 @dataclass

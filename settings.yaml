@@ -22,3 +22,5 @@ models:
 
 execution:
   max_task_depth: 2
+  max_token_usage: 100000
+  max_turns: 15

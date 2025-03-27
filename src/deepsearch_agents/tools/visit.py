@@ -93,14 +93,5 @@ async def visit_url_and_summarize(
     task = ctx.context.current_task()
     origin_query = task.origin_query
     query = task.query
-    summarize_result = await summarize(ctx.context, query, origin_query, response.text)
+    summarize_result = await summarize(ctx, query, origin_query, response.text)
     return summarize_result
-
-
-if __name__ == "__main__":
-    url = "https://www.cnbc.com/2025/03/14/us-stock-market-loses-5-trillion-in-value-in-three-weeks.html"
-    asyncio.run(
-        visit_url_and_summarize(
-            build_task_context("why is spx down 10% in last month?"), url
-        )
-    )

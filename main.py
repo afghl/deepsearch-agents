@@ -10,6 +10,7 @@ from agents import (
     RunContextWrapper,
     Runner,
     Tool,
+    gen_trace_id,
     trace,
     ModelSettings,
 )
@@ -30,7 +31,7 @@ class Hooks(PlannerHooks):
     async def on_tool_start(
         self,
         ctx: RunContextWrapper[TaskContext],
-        agent: Agent[TaskContext],
+        _: Agent[TaskContext],
         tool: Tool,
     ) -> None:
         ctx.context.current_task().turn += 1
@@ -85,46 +86,39 @@ async def main():
     parser.add_argument("query", type=str, help="query string to search")
     # args = parser.parse_args()
     # q = args.query.strip()
-    q = "why is spx down 10% in last month?"
+    q = "How has the SPX performed in the last 30 days? What specific reasons have driven the market recently?"
     logger.info(f"query: {q}")
-    trace_id = f"trace_{uuid.uuid4().hex}"
-    new_trace = trace(
-        workflow_name="deepsearch",
-        trace_id=trace_id,
-    )
-    new_trace.start(mark_as_current=True)
-    conf = RunConfig(
-        model_provider=OpenAIProvider(
-            base_url=config.openai_base_url,
-            api_key=config.get_openai_api_key(),
-            use_responses=False,
-        ),
-    )
-    context = build_task_context(q)
-    planner_conf = config.get_model_config("planner")
-    planner = Planner(
-        name="DeepSearch Agent",
-        tools=[search, visit, answer, reflect],
-        task_generator="reflect",
-        planner_hooks=Hooks(conf),
-        model=planner_conf.model_name,
-        model_settings=planner_conf.as_model_settings(),
-    )
+    trace_id = gen_trace_id()
+    with trace(workflow_name="deepsearch", trace_id=trace_id):
+        conf = RunConfig(
+            model_provider=OpenAIProvider(
+                base_url=config.openai_base_url,
+                api_key=config.get_openai_api_key(),
+                use_responses=False,
+            ),
+        )
+        context = build_task_context(q)
+        planner_conf = config.get_model_config("planner")
+        planner = Planner(
+            name="DeepSearch Agent",
+            tools=[search, visit, answer, reflect],
+            task_generator="reflect",
+            planner_hooks=Hooks(conf),
+            model=planner_conf.model_name,
+            model_settings=planner_conf.as_model_settings(),
+        )
 
-    result = await Runner.run(
-        starting_agent=planner,
-        input=q,
-        context=context,
-        max_turns=15,
-        run_config=conf,
-    )
-    new_trace.finish()
+        result = await Runner.run(
+            starting_agent=planner,
+            input=q,
+            context=context,
+            max_turns=config.excution_config.max_turns,
+            run_config=conf,
+        )
     logger.info("final output----------\n")
     logger.info(result.final_output)
     logger.info("final answer----------\n")
     logger.info(context.final_answer())
-
-    logger.info("logs----------\n")
 
 
 if __name__ == "__main__":

@@ -40,7 +40,7 @@ async def summarize(
     """
     ret = await get_response(
         model="summarize",
-        input=content,
+        input=f"the web page content is: \n{content}",
         output_type=SummarizeResult,
         system_instructions=SUMMARIZE_PROMPT.format(
             query_content=query_content(origin_query, query),

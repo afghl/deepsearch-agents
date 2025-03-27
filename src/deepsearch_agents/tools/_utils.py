@@ -50,11 +50,11 @@ def log_action(
         "action": action,
         "think": think,
     }
-    # for k, v in kwargs.items():
-    #     if isinstance(v, list):
-    #         tolog[k] = [str(item) for item in v]
-    #     else:
-    #         tolog[k] = str(v)
+    for k, v in kwargs.items():
+        if isinstance(v, list):
+            tolog[k] = [str(item) for item in v]
+        else:
+            tolog[k] = str(v)
 
     usage = ctx.usage
     percent = (

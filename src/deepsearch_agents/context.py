@@ -55,7 +55,7 @@ class TaskContext:
     start_date_time: str
     tasks: Dict[str, Task] = field(default_factory=dict)
 
-    def __init__(self, task):
+    def __init__(self, task: Task):
         self.tasks = {}
         self.tasks[task.id] = task
         self.start_date_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
