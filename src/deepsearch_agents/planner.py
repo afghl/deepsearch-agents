@@ -185,7 +185,7 @@ class Planner(Agent[TaskContext]):
 
         The filtered list of tools is then assigned to the Planner's tools attribute.
         """
-        if self._is_running_out_of_token(ctx):
+        if self._running_out_of_token(ctx):
             self.tools = [tool for tool in self.all_tools if tool.name == "answer"]
             return
 
