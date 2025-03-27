@@ -58,7 +58,7 @@ _list_out_knowledge_template = """
 class Task:
     origin_query: str
     query: str
-    id: str = field(default_factory=lambda: uuid.uuid4().hex)
+    id: str = field(default_factory=lambda: uuid.uuid4().hex[:6])
     level: int = 1
     turn: int = 1
     parent: "Task | None" = None
@@ -84,6 +84,14 @@ class Task:
                 )
                 for i, knowledge in enumerate(self.knowledges)
             ]
+        )
+
+    def solved(self) -> bool:
+        return bool(
+            self.answer
+            and self.answer.answer
+            and self.answer.evaluation
+            and self.answer.evaluation.is_pass
         )
 
 

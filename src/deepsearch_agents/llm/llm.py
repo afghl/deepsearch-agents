@@ -17,7 +17,7 @@ config = get_configuration()
 
 client = AsyncOpenAI(
     base_url=config.openai_base_url if config else None,
-    api_key=config.get_openai_api_key(),
+    api_key=config.openai_api_key,
 )
 
 

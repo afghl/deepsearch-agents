@@ -75,8 +75,8 @@ class Configuration:
     openai_api_key: str
     """Primary OpenAI API key"""
 
-    override_openai_api_key: str
-    """Optional override API key for OpenAI"""
+    tracing_openai_api_key: str
+    """OpenAI API key for tracing"""
 
     jina_api_key: str
     """Jina API key"""
@@ -125,15 +125,6 @@ class Configuration:
             raise ValueError("Model settings not loaded")
         return self.model_settings[model_name]
 
-    def get_openai_api_key(self) -> str:
-        """
-        Gets the active OpenAI API key.
-
-        Returns:
-            str: The override API key if set, otherwise the primary API key
-        """
-        return self.override_openai_api_key or self.openai_api_key
-
 
 # Global configuration instance
 config: Configuration | None = None
@@ -159,7 +150,7 @@ def get_configuration() -> Configuration:
     config = Configuration(
         openai_base_url=os.getenv("OPENAI_BASE_URL", ""),
         openai_api_key=os.getenv("OPENAI_API_KEY", ""),
-        override_openai_api_key=os.getenv("MY_OPENAI_API_KEY", ""),
+        tracing_openai_api_key=os.getenv("TRACING_OPENAI_API_KEY", ""),
         jina_api_key=os.getenv("JINA_API_KEY", ""),
         serpapi_api_key=os.getenv("SERPAPI_API_KEY", ""),
     )
