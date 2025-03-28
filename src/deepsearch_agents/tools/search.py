@@ -69,7 +69,7 @@ async def search(
         return []
     queries = await rewrite_search_query(ctx, search_queries)
 
-    logger.info(f"Rewrite original query: {search_queries}\n ->\n {queries}")
+    # logger.info(f"Rewrite original query: {search_queries}\n ->\n {queries}")
 
     res: list[SearchResult] = []
     for query in queries.queries:

@@ -1,5 +1,8 @@
 import asyncio
-from typing import List, Optional
+import datetime
+import re
+from typing import List, Literal, Optional
+from pydantic import BaseModel
 import requests
 
 from agents import RunContextWrapper, function_tool
@@ -12,8 +15,18 @@ from deepsearch_agents.context import (
     TaskContext,
     build_task_context,
 )
-from deepsearch_agents.tools.summarize import SummarizeResult, summarize
-from ._utils import log_action, tool_instructions
+from deepsearch_agents.tools._utils import (
+    log_action,
+    remove_markdown_link,
+    tool_instructions,
+)
+
+
+class PageContent(BaseModel):
+    title: str
+    description: str
+    content: str
+    warning: str | None = None
 
 
 def visit_description(ctx: Optional[TaskContext] = None) -> str:
@@ -48,30 +61,27 @@ async def visit(
     tasks = []
 
     for url in urls_to_process:
-        tasks.append(visit_url_and_summarize(ctx, url))
+        tasks.append(fetch_url(url))
 
     # 并发执行所有任务
-    results: List[SummarizeResult | BaseException] = await asyncio.gather(
+    results: List[PageContent | BaseException] = await asyncio.gather(
         *tasks, return_exceptions=True
     )
     # 处理结果
     for url, result in zip(urls_to_process, results):
         if isinstance(result, BaseException):
             logger.error(f"Error processing URL {url}: {result}")
-        elif result and result.evaluate == "useful":
-            knowledges.append(
-                Knowledge(
-                    reference=Reference(
-                        url=url,
-                        datetime=result.datetime,
-                    ),
-                    summary=result.summarize,
-                    quotes=result.quotes,
-                )
+        elif result.warning:
+            logger.warning(
+                f"URL {url}, something wrong with the content, {result.warning}"
             )
         else:
-            logger.warning(
-                f"URL {url}, something wrong with the content, {result.reason}"
+            knowledges.append(
+                Knowledge(
+                    reference=Reference(url=url, title=result.title),
+                    summary=f"Title: {result.title}\nDescription: {result.description}.",
+                    quotes=[result.content],
+                )
             )
 
     ctx.context.current_task().knowledges.extend(knowledges)
@@ -93,19 +103,30 @@ async def visit(
         """
 
 
-async def visit_url_and_summarize(
-    ctx: RunContextWrapper[TaskContext], url: str
-) -> SummarizeResult:
+async def fetch_url(url: str) -> PageContent:
     """
     - Crawl and read full content from URLs
     """
     config = get_configuration()
     url = f"https://r.jina.ai/{url}"
-    headers = {"Authorization": f"Bearer {config.jina_api_key}"}
-    response = requests.get(url, headers=headers)
+    headers = {
+        "Authorization": f"Bearer {config.jina_api_key}",
+        "Accept": "application/json",
+    }
+    response = requests.get(url, headers=headers).json()
 
-    task = ctx.context.current_task()
-    origin_query = task.origin_query
-    query = task.query
-    summarize_result = await summarize(ctx, query, origin_query, response.text)
-    return summarize_result
+    if response.get("code") != 200:
+        message = response.get("message", "Unknown error occurred while fetching URL")
+        raise ValueError(f"API request failed: {message}")
+    data = response.get("data")
+    if not data:
+        raise ValueError("No data returned from API")
+    try:
+        return PageContent(
+            title=data["title"],
+            description=data["description"],
+            content=remove_markdown_link(data["content"]),
+            warning=data.get("warning"),
+        )
+    except Exception as e:
+        raise ValueError(f"Error parsing data: {e}") from e

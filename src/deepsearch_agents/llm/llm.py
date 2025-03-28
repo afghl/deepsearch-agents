@@ -2,7 +2,8 @@ import asyncio
 from typing import Type, TypeVar, Union, cast, overload, Generic
 from agents import TResponseInputItem, Usage
 from openai import AsyncOpenAI
-from pydantic import BaseModel, Field
+from openai.types.chat.completion_create_params import ResponseFormatJSONObject
+from pydantic import BaseModel, Field, ValidationError
 
 from deepsearch_agents.log import logger
 from deepsearch_agents.conf import ModelConfig, get_configuration
@@ -59,43 +60,76 @@ async def get_response(
         messages.extend(input)
     model_conf = config.get_model_config(model)
 
-    if openai_model(model_conf.model_name):
-        return await _openai_chat_completion(model_conf, messages, output_type)
+    if output_type is None:
+        return await _completion(model_conf, messages)  # type: ignore
+    elif _support_response_format(model_conf.model_name):
+        return await _openai_chat_completion_parse(model_conf, messages, output_type)
     else:
-        raise ValueError(f"Unsupported model: {model}")
+        return await _completion_and_parse(model_conf, messages, output_type)
 
 
-async def _openai_chat_completion(
+async def _completion(
+    model_conf: ModelConfig, messages: list[dict[str, str]]
+) -> LLMResponse[str]:
+    response = await client.chat.completions.create(
+        model=model_conf.model_name,
+        messages=messages,  # type: ignore
+        temperature=model_conf.temperature,
+        max_tokens=model_conf.max_tokens,
+        top_p=model_conf.top_p,
+    )
+    content = response.choices[0].message.content
+    if content is None:
+        raise ValueError("Empty response from mode")
+    usage = _get_usage(response)
+    return LLMResponse(response=content, usage=usage)
+
+
+async def _openai_chat_completion_parse(
     model_conf: ModelConfig,
     messages: list[dict[str, str]],
-    output_type: Type[T] | None = None,
+    output_type: Type[T],
 ) -> LLMResponse[T]:
-    if output_type is not None:
-        response = await client.beta.chat.completions.parse(
-            model=model_conf.model_name,
-            messages=messages,  # type: ignore
-            response_format=output_type,
-            temperature=model_conf.temperature,
-            max_tokens=model_conf.max_tokens,
-            top_p=model_conf.top_p,
+    response = await client.beta.chat.completions.parse(
+        model=model_conf.model_name,
+        messages=messages,  # type: ignore
+        response_format=output_type,
+        temperature=model_conf.temperature,
+        max_tokens=model_conf.max_tokens,
+        top_p=model_conf.top_p,
+    )
+    # Extract usage information from the response
+    usage = _get_usage(response)
+    if response.choices[0].message.parsed is None:
+        raise ValueError("Empty response from model")
+    # Return the parsed response
+    return LLMResponse(response=response.choices[0].message.parsed, usage=usage)
+
+
+async def _completion_and_parse(
+    model_conf: ModelConfig, messages: list[dict[str, str]], output_type: Type[T]
+) -> LLMResponse[T]:
+    response = await client.chat.completions.create(
+        model=model_conf.model_name,
+        messages=messages,  # type: ignore
+        temperature=model_conf.temperature,
+        response_format=ResponseFormatJSONObject,  # not many models follow this protocol
+        max_tokens=model_conf.max_tokens,
+        top_p=model_conf.top_p,
+    )
+    content = response.choices[0].message.content
+    if content is None:
+        raise ValueError("Empty response from mode")
+    usage = _get_usage(response)
+    # parse locally
+    try:
+        assert issubclass(output_type, BaseModel)
+        return LLMResponse(
+            response=output_type.model_validate_json(content),  # type: ignore
+            usage=usage,
         )
-        # Extract usage information from the response
-        usage = _get_usage(response)
-        # Return the parsed response
-        return LLMResponse(response=response.choices[0].message.parsed, usage=usage)  # type: ignore
-    else:
-        response = await client.chat.completions.create(
-            model=model_conf.model_name,
-            messages=messages,  # type: ignore
-            temperature=model_conf.temperature,
-            max_tokens=model_conf.max_tokens,
-            top_p=model_conf.top_p,
-        )
-        content = response.choices[0].message.content
-        if content is None:
-            raise ValueError("Empty response from OpenAI")
-        usage = _get_usage(response)
-        return LLMResponse(response=content, usage=usage)  # type: ignore
+    except ValidationError as e:
+        raise ValueError(f"Failed to parse response from model: {e}") from e
 
 
 def _get_usage(response: ParsedChatCompletion | ChatCompletion) -> Usage:
@@ -112,7 +146,6 @@ def _get_usage(response: ParsedChatCompletion | ChatCompletion) -> Usage:
 
 _openai_models = [
     "gpt-4o",
-    "gpt-4o-mini",
     "o1-preview",
     "o1",
     "o1-mini",
@@ -122,7 +155,7 @@ _openai_models = [
 ]
 
 
-def openai_model(model_name: str) -> bool:
+def _support_response_format(model_name: str) -> bool:
     return model_name in _openai_models
 
 

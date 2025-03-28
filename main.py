@@ -17,6 +17,7 @@ from agents import (
 )
 from openai import AsyncOpenAI
 
+from deepsearch_agents import conf
 from deepsearch_agents.log import logger
 from deepsearch_agents.conf import get_configuration
 from deepsearch_agents.context import Task, TaskContext, build_task_context
@@ -31,6 +32,7 @@ class Hooks(AgentHooks[TaskContext]):
         ctx: RunContextWrapper[TaskContext],
         agent: Agent[TaskContext],
     ) -> None:
+        ctx.context.current_task().set_usage(ctx.usage)
         agent.rebuild_tools(ctx)
 
     async def on_tool_start(
@@ -48,7 +50,14 @@ class Hooks(AgentHooks[TaskContext]):
         tool: Tool,
         result: str,
     ) -> None:
-        logger.info(f"finish action {tool.name} result: {result}")
+        maximun = conf.get_configuration().execution_config.max_token_usage
+        curr = ctx.context.current_task().usage
+
+        total = ctx.context.usage()
+        logger.info(
+            f"finish action {tool.name} result: {result} curr token usage: {curr.total_tokens} ({(curr.total_tokens/maximun):.2%}),"
+            f"total usage: {total.total_tokens} ({(total.total_tokens/maximun):.2%})."
+        )
         agent.rebuild_tools(ctx, tool.name)
 
 

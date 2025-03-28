@@ -1,7 +1,7 @@
 # model settings
 models:
   planner:
-    model_name: "DeepSeek-R1"
+    model_name: "gpt-4o"
     temperature: 0.5
     max_tokens: 4000
     tool_choice: "required"

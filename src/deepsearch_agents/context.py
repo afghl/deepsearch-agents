@@ -1,9 +1,12 @@
+import asyncio
+from asyncio.log import logger
 import contextvars
 from dataclasses import dataclass, field
 import time
 from typing import Dict, List, Literal
 import uuid
 
+from agents import Usage
 from pydantic import BaseModel
 
 
@@ -21,7 +24,8 @@ class Evaluation(BaseModel):
 
 class Reference(BaseModel):
     url: str
-    datetime: str | None
+    title: str
+    datetime: str | None = None
 
     def __str__(self) -> str:
         return self.model_dump_json()
@@ -40,10 +44,10 @@ class Knowledge(BaseModel):
 
     reference: Reference
     "The source of the knowledge."
-    summary: str
-    "How the reference answers the question."
     quotes: List[str]
     "Quotes from the reference that support the answer."
+    summary: str | None = None
+    "How the reference answers the question."
 
     def __str__(self) -> str:
         return self.model_dump_json()
@@ -67,6 +71,7 @@ class Task:
     knowledges: List[Knowledge] = field(default_factory=list)
     answer: Answer | None = None
     attempt: int = 0
+    usage: Usage | None = None
 
     def is_origin_query(self) -> bool:
         return self.origin_query == self.query
@@ -94,6 +99,11 @@ class Task:
             and self.answer.evaluation.is_pass
         )
 
+    def set_usage(self, u: Usage) -> None:
+        if self.usage:
+            logger.warning("Usage is not set, setting it to the first usage")
+        self.usage = u
+
 
 @dataclass
 class TaskContext:
@@ -120,6 +130,11 @@ class TaskContext:
     def final_answer(self) -> Answer | None:
         root_task = next((task for task in self.tasks.values() if task.parent is None))
         return root_task.answer
+
+    def usage(self) -> Usage:
+        total = Usage()
+        [total.add(task.usage) for task in self.tasks.values() if task.usage]
+        return total
 
 
 def build_task_context(query: str) -> TaskContext:

@@ -28,14 +28,10 @@ Given a question-answer pair, your job is to find ANY weakness in the presented 
 
 The user will also provide the knowledge items he used to answer the question. Note that some of them may not be directly related to the question/answer user provided. 
 
-
 """
 
 USER_PROMPT = """
 the question is: {question}.
-
-Here are some information I found to answer the question:
-{knowledge}
 
 Here is the answer I provided:
 {answer}
@@ -66,11 +62,10 @@ async def evaluate_answer(
         )
 
     question = curr.query
-    knowledge = knowledge_list(curr)
     ret = await get_response(
         model="evaluate",
         input=USER_PROMPT.format(
-            question=question, answer=answer, knowledge=knowledge, references=references
+            question=question, answer=answer, references=references
         ),
         output_type=Evaluation,
         system_instructions=EVALUATION_PROMPT,
@@ -79,16 +74,16 @@ async def evaluate_answer(
     return ret.response
 
 
-def knowledge_list(task: Task) -> str:
-    if not task.knowledges:
-        return ""
+# def knowledge_list(task: Task) -> str:
+#     if not task.knowledges:
+#         return ""
 
-    ret = task.list_out_knowledge()
-    if any(sub_task.answer for sub_task in task.sub_tasks.values()):
-        ret += "\n\nIn order to dig deeper, And provide a more comprehensive answer, I did some research on the following aspects: \n"
-        for sub_task in task.sub_tasks.values():
-            if sub_task.answer:
-                ret += f"{sub_task.query}\n"
-                ret += f"After some research, I concluded on this answer: \n{sub_task.answer.answer}\n"
+#     ret = task.list_out_knowledge()
+#     if any(sub_task.answer for sub_task in task.sub_tasks.values()):
+#         ret += "\n\nIn order to dig deeper, And provide a more comprehensive answer, I did some research on the following aspects: \n"
+#         for sub_task in task.sub_tasks.values():
+#             if sub_task.answer:
+#                 ret += f"{sub_task.query}\n"
+#                 ret += f"After some research, I concluded on this answer: \n{sub_task.answer.answer}\n"
 
-    return ret
+#     return ret

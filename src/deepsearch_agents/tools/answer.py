@@ -37,7 +37,7 @@ async def answer(
 
     Args:
         think: A very concise explain of why choose to give the final answer.
-        references: List of references, each reference must include exactQuote, url and datetime.
+        references: List of references, each reference must include url and the title.
         answer: Use all your knowledge you have collected, cover multiple aspects if needed.
           Must be definitive, no ambiguity, no uncertainty, no disclaimers. Must be confident.
           Use markdown footnote syntax like [^1], [^2] to refer the corresponding reference item.
@@ -59,10 +59,10 @@ async def answer(
         return "You have provided a final verified answer with references. Congratulations! You have completed the task. Our conversation ends here."
     else:
         return f"""
-        You have draft an answer, but it's not good enough.
-        Critic: {evaluation.critic}
-        Here is the improvement:
-        {evaluation.improvement}
+You have draft an answer, but it's not good enough.
+Critic: {evaluation.critic}
+Here is the improvement:
+{evaluation.improvement}
 
-        Take the improvement into account, act accordingly.
-        """
+According to this improvement plan, take other actions. DO NOT directly try to answer again.
+"""

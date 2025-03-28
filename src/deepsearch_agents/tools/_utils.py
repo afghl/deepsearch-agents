@@ -1,3 +1,4 @@
+import re
 from typing import Any, Callable, Dict, List
 
 from agents import RunContextWrapper
@@ -56,12 +57,16 @@ def log_action(
         else:
             tolog[k] = str(v)
 
-    usage = ctx.usage
-    percent = (
-        usage.total_tokens / conf.get_configuration().execution_config.max_token_usage
-    )
     logger.info(
-        f"Task: {ctx.context.current_task_id()}, Turn: {ctx.context.current_task().turn} token_usage: {ctx.usage.total_tokens} ({percent:.2%}) Taking action: "
+        f"Task: {ctx.context.current_task_id()}, Turn: {ctx.context.current_task().turn}"
     )
 
     logger.info(tolog)
+
+
+def remove_markdown_link(content: str) -> str:
+    return re.sub(
+        r"\[([^\]]*)\]\([^\)]+\)",
+        lambda m: m.group(1) if m.group(1) else "",
+        content,
+    )
