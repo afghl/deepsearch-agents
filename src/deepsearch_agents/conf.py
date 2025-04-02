@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 import os
+from typing import Literal
 from agents import ModelSettings
 import yaml
 
@@ -18,14 +19,20 @@ class ModelConfig:
     model_name: str
     """Name of the model (e.g., 'gpt-4', 'gpt-3.5-turbo')"""
 
-    temperature: float
-    """Controls randomness in the model's output (0.0 to 1.0)"""
-
     max_tokens: int
     """Maximum number of tokens to generate in the response"""
 
-    top_p: float
+    temperature: float | None = None
+    """Controls randomness in the model's output (0.0 to 2.0)"""
+
+    top_p: float | None = None
     """Controls diversity via nucleus sampling (0.0 to 1.0)"""
+
+    tool_choice: str | None = None
+    """The tool choice to use when calling the model."""
+
+    parallel_tool_calls: bool | None = None
+    """Whether to use parallel tool calls when calling the model."""
 
     def as_model_settings(self) -> ModelSettings:
         """
@@ -38,6 +45,8 @@ class ModelConfig:
             temperature=self.temperature,
             max_tokens=self.max_tokens,
             top_p=self.top_p,
+            tool_choice=self.tool_choice,
+            parallel_tool_calls=self.parallel_tool_calls,
         )
 
 
@@ -50,14 +59,21 @@ class ExecutionConfig:
     max_task_depth: int = 2
     """Maximum depth for nested task execution"""
 
+    max_tasks_count: int = 3
+    """The maximum number of sub-tasks the agent can generate."""
+
     max_token_usage: int = 100_000
     """Maximum token usage for the execution"""
 
     max_turns: int = 15
     """Maximum number of turns for the execution"""
 
-    max_critical_attempts: int = 3
-    """Maximum number of critical attempts for the execution"""
+    max_evaluation: int = 2
+    """The maximum number of evaluations the agent asks before returning an answer."""
+
+    # TODO see if we need this
+    # sub_task_max_knowledge_count: int = 3
+    # """The maximum number for a **sub-task** to retrieve knowledge before giving an answer."""
 
 
 @dataclass
@@ -75,8 +91,8 @@ class Configuration:
     openai_api_key: str
     """Primary OpenAI API key"""
 
-    override_openai_api_key: str
-    """Optional override API key for OpenAI"""
+    tracing_openai_api_key: str
+    """OpenAI API key for tracing"""
 
     jina_api_key: str
     """Jina API key"""
@@ -125,15 +141,6 @@ class Configuration:
             raise ValueError("Model settings not loaded")
         return self.model_settings[model_name]
 
-    def get_openai_api_key(self) -> str:
-        """
-        Gets the active OpenAI API key.
-
-        Returns:
-            str: The override API key if set, otherwise the primary API key
-        """
-        return self.override_openai_api_key or self.openai_api_key
-
 
 # Global configuration instance
 config: Configuration | None = None
@@ -159,7 +166,7 @@ def get_configuration() -> Configuration:
     config = Configuration(
         openai_base_url=os.getenv("OPENAI_BASE_URL", ""),
         openai_api_key=os.getenv("OPENAI_API_KEY", ""),
-        override_openai_api_key=os.getenv("MY_OPENAI_API_KEY", ""),
+        tracing_openai_api_key=os.getenv("TRACING_OPENAI_API_KEY", ""),
         jina_api_key=os.getenv("JINA_API_KEY", ""),
         serpapi_api_key=os.getenv("SERPAPI_API_KEY", ""),
     )

@@ -35,8 +35,7 @@ def search_description(ctx: Optional[TaskContext] = None) -> str:
 tool_instructions["search"] = search_description
 
 
-MAX_SEARCH_RESULTS = 10
-TOTAL_SEARCH_RESULTS = 10
+TOTAL_SEARCH_RESULTS = 25
 
 
 class SearchResult(BaseModel):
@@ -69,11 +68,11 @@ async def search(
         return []
     queries = await rewrite_search_query(ctx, search_queries)
 
-    logger.info(f"Rewrite original query: {search_queries}\n ->\n {queries}")
+    # logger.info(f"Rewrite original query: {search_queries}\n ->\n {queries}")
 
     res: list[SearchResult] = []
     for query in queries.queries:
-        r = _search(query)
+        r = _search(query, TOTAL_SEARCH_RESULTS // len(queries.queries))
         res.extend(r)
     reranked_ret = _rerank(res)
 
@@ -84,9 +83,9 @@ def _rerank(results: List[SearchResult]) -> List[SearchResult]:
     return results
 
 
-def _search(query: str) -> List[SearchResult]:
+def _search(query: str, max_results: int) -> List[SearchResult]:
     config = get_configuration()
     r = serpapi.search(
         q=query, engine="google", hl="en", gl="us", api_key=config.serpapi_api_key
     )
-    return [SearchResult(**r) for r in r["organic_results"][:MAX_SEARCH_RESULTS]]
+    return [SearchResult(**r) for r in r["organic_results"][:max_results]]

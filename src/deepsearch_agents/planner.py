@@ -3,21 +3,22 @@ import asyncio
 import contextvars
 from dataclasses import dataclass, field
 import json
-import time
-from typing import Any, Callable, Dict, List, Optional, cast
+from typing import List, cast
 
 from agents import (
     Agent,
     AgentHooks,
+    FunctionTool,
     ModelSettings,
     RunContextWrapper,
+    Runner,
     Tool,
 )
 
 from deepsearch_agents import conf
 from deepsearch_agents.log import logger
 from deepsearch_agents.context import TaskContext, Task
-from deepsearch_agents.tools import get_tool_instructions
+from deepsearch_agents.tools import get_tool_instructions, sep
 
 
 def _build_instructions_and_tools(
@@ -69,6 +70,7 @@ Think step by step, choose the action carefully.
         logger.info(
             f"We are running out of token, take a best try to answer the question."
         )
+        agent.model_settings.tool_choice = "auto"
         return f"""Current Date: {ctx.context.start_date_time}
 
 You are an advanced AI research agent from Deepsearch AI. You are specialized in multistep reasoning. 
@@ -87,50 +89,6 @@ Let's keep things smooth and on track.
 
 Base on the background information, take a best try, answer the question. 
 """
-
-
-class PlannerHooks(AgentHooks[TaskContext]):
-
-    @abstractmethod
-    async def on_new_task_generated(
-        self, context: RunContextWrapper[TaskContext], agent: "Planner", task: Task
-    ) -> None:
-        pass
-
-
-def _hooks(planner_hooks: PlannerHooks | None) -> AgentHooks[TaskContext] | None:
-    """
-    This function creates a new hooks instance that extends the original hooks with the planner hooks.
-    """
-    if not planner_hooks:
-        return None
-
-    async def on_tool_end(
-        context: RunContextWrapper[TaskContext],
-        agent: Agent[TaskContext],
-        tool: Tool,
-        result: str,
-    ) -> None:
-        # First call the original hooks' on_tool_end
-        await planner_hooks.on_tool_end(context, agent, tool, result)
-
-        planner = cast(Planner, agent)
-        if tool.name == planner.task_generator and result:
-            new_tasks = planner._build_new_tasks(context, result)
-            await asyncio.gather(
-                *[
-                    planner_hooks.on_new_task_generated(context, planner, task)
-                    for task in new_tasks
-                ]
-            )
-
-    hooks_instance = AgentHooks[TaskContext]()
-    hooks_instance.on_start = planner_hooks.on_start
-    hooks_instance.on_end = planner_hooks.on_end
-    hooks_instance.on_handoff = planner_hooks.on_handoff
-    hooks_instance.on_tool_start = planner_hooks.on_tool_start
-    hooks_instance.on_tool_end = on_tool_end
-    return hooks_instance
 
 
 @dataclass
@@ -155,7 +113,6 @@ class Planner(Agent[TaskContext]):
         name: str,
         tools: List[Tool],
         task_generator: str | None = None,
-        planner_hooks: PlannerHooks | None = None,
         hooks: AgentHooks[TaskContext] | None = None,
         model: str | None = None,
         model_settings: ModelSettings | None = None,
@@ -164,12 +121,14 @@ class Planner(Agent[TaskContext]):
             name=name,
             instructions=_build_instructions_and_tools,
             tools=tools,
-            hooks=_hooks(planner_hooks) if planner_hooks else hooks,
+            hooks=hooks,
             model=model,
             model_settings=model_settings,
         )
         self.task_generator = task_generator
-        self.all_tools = tools
+        if task_generator:
+            self._build_task_generate_tool()
+        self.all_tools = self.tools  # type: ignore
 
     def rebuild_tools(
         self, ctx: RunContextWrapper[TaskContext], last_used: str | None = None
@@ -179,21 +138,27 @@ class Planner(Agent[TaskContext]):
         The method filters out tools that should not be available for the current task. Specifically, it excludes:
         - The last used tool to avoid immediate repetition.
         - The task generator tool if the current task depth exceeds the maximum allowed depth.
+        - If the agent is running out of tokens, it returns the answer action exclusively.
 
         The filtered list of tools is then assigned to the Planner's tools attribute.
         """
-        if self._is_running_out_of_token(ctx):
+        if self._running_out_of_token(ctx):
             self.tools = [tool for tool in self.all_tools if tool.name == "answer"]
             return
+        config = conf.get_configuration().execution_config
+        available = []
+        for tool in self.all_tools:
+            # Skip if this is the last used tool
+            if tool.name == last_used:
+                continue
+            # Check task generator conditions
+            if tool.name == self.task_generator:
+                if ctx.context.current_task().level >= config.max_task_depth:
+                    continue
+                if len(ctx.context.current_task().sub_tasks) >= config.max_tasks_count:
+                    continue
 
-        def forbid(name: str) -> bool:
-            return name == last_used or (
-                ctx.context.current_task().level
-                >= conf.get_configuration().execution_config.max_task_depth
-                and name == self.task_generator
-            )
-
-        available = [tool for tool in self.all_tools if not forbid(tool.name)]
+            available.append(tool)
         self.tools = available
 
     def _build_new_tasks(
@@ -203,16 +168,16 @@ class Planner(Agent[TaskContext]):
         Build new tasks from the result.
         """
 
-        logger.info(f"Build new tasks from result: {result}")
+        logger.info(f"Building new tasks from result: {result}")
         tasks = []
-        question_list = result.split("|")
+        question_list = result.split(sep)
         curr = ctx.context.current_task()
         if isinstance(question_list, str):
             question_list = json.loads(question_list)
 
-        cnt = 0
+        cnt = len(curr.sub_tasks)
         for q in question_list:
-            task = Task(
+            sub_task = Task(
                 id=f"{curr.id}_{cnt+1}",
                 origin_query=curr.origin_query,
                 query=q,
@@ -221,11 +186,11 @@ class Planner(Agent[TaskContext]):
             )
             cnt += 1
             logger.info(
-                f"curr: {curr.id} Create new task: {task.id}, ctx: {ctx.context.current_task_id()}"
+                f"curr: {curr.id} Create new task: {sub_task.id}, ctx: {ctx.context.current_task_id()}"
             )
-            curr.sub_tasks[task.id] = task
-            ctx.context.tasks[task.id] = task
-            tasks.append(task)
+            curr.sub_tasks[sub_task.id] = sub_task
+            ctx.context.tasks[sub_task.id] = sub_task
+            tasks.append(sub_task)
         return tasks
 
     @property
@@ -237,3 +202,71 @@ class Planner(Agent[TaskContext]):
             ctx.usage.total_tokens
             > conf.get_configuration().execution_config.max_token_usage * 0.85
         )
+
+    def _build_task_generate_tool(self) -> None:
+        tool = next(tool for tool in self.tools if tool.name == self.task_generator)
+        if not tool:
+            return
+        assert isinstance(
+            tool, FunctionTool
+        ), f"Task generator tool {self.task_generator} must be a FunctionTool"
+
+        async def execute_task(ctx: RunContextWrapper[TaskContext], input: str) -> str:
+            ret = await tool.on_invoke_tool(ctx, input)
+            if not ret:
+                return "No new tasks generated."
+            tasks = self._build_new_tasks(ctx, ret)
+            await asyncio.gather(*[self._execute_sub_task(ctx, task) for task in tasks])
+            return "\n".join(
+                [
+                    (
+                        f"For Question: {task.query}\nYou did some research. Here is the answer: {task.answer.answer}"  # type: ignore
+                        if task.solved()
+                        else f"For Question: {task.query}\n Cannot find information for it"
+                    )
+                    for task in tasks
+                ]
+            )
+
+        # remove the original tool
+        self.tools = [tool for tool in self.tools if tool.name != self.task_generator]
+        self.tools.append(
+            FunctionTool(
+                name=tool.name,
+                description=tool.description,
+                params_json_schema=tool.params_json_schema,
+                on_invoke_tool=execute_task,
+                strict_json_schema=tool.strict_json_schema,
+            )
+        )
+
+    async def _execute_sub_task(
+        self, context: RunContextWrapper[TaskContext], new_task: Task
+    ) -> None:
+        """
+        Execute a sub task.
+        """
+
+        async def run():
+            # Set the current task id in the context
+            new_task.set_as_current()
+            p = Planner(
+                name=f"DeepSearch Agent-{new_task.id}",
+                tools=self.tools,
+                task_generator=self.task_generator,
+                hooks=self.hooks,
+                model=self.model,
+                model_settings=self.model_settings,
+            )
+            try:
+                await Runner.run(
+                    starting_agent=p,
+                    input=new_task.query,
+                    context=context.context,
+                )
+            except Exception as e:
+                print(f"Error running sub task: {e}")
+            print(f"task is finish run: {new_task.id}")
+
+        ctx = contextvars.copy_context()
+        await ctx.run(run)
