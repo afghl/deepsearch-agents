@@ -59,14 +59,21 @@ class ExecutionConfig:
     max_task_depth: int = 2
     """Maximum depth for nested task execution"""
 
+    max_tasks_count: int = 3
+    """The maximum number of sub-tasks the agent can generate."""
+
     max_token_usage: int = 100_000
     """Maximum token usage for the execution"""
 
     max_turns: int = 15
     """Maximum number of turns for the execution"""
 
-    max_critical_attempts: int = 2
-    """Maximum number of critical attempts for the execution"""
+    max_evaluation: int = 2
+    """The maximum number of evaluations the agent asks before returning an answer."""
+
+    # TODO see if we need this
+    # sub_task_max_knowledge_count: int = 3
+    # """The maximum number for a **sub-task** to retrieve knowledge before giving an answer."""
 
 
 @dataclass

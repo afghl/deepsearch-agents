@@ -162,14 +162,3 @@ def _support_response_format(model_name: str) -> bool:
 class Answer(BaseModel):
     answer: str = Field(description="Answer to the question")
     source: str = Field(description="Source of the answer")
-
-
-async def main():
-    res = await get_response("rewrite", "hello world")
-    print(res.response.capitalize())
-    ans = await get_response("rewrite", "Why is the sky blue?", Answer)
-    print(ans.response.answer)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

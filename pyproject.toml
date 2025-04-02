@@ -8,6 +8,7 @@ dependencies = [
     "asyncio>=3.4.3",
     "colorama>=0.4.6",
     "dotenv>=0.9.9",
+    "numpy>=2.2.4",
     "openai>=1.68",
     "openai-agents>=0.0.6",
     "pyyaml>=6.0.2",

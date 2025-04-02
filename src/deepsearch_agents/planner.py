@@ -145,15 +145,20 @@ class Planner(Agent[TaskContext]):
         if self._running_out_of_token(ctx):
             self.tools = [tool for tool in self.all_tools if tool.name == "answer"]
             return
+        config = conf.get_configuration().execution_config
+        available = []
+        for tool in self.all_tools:
+            # Skip if this is the last used tool
+            if tool.name == last_used:
+                continue
+            # Check task generator conditions
+            if tool.name == self.task_generator:
+                if ctx.context.current_task().level >= config.max_task_depth:
+                    continue
+                if len(ctx.context.current_task().sub_tasks) >= config.max_tasks_count:
+                    continue
 
-        def forbid(name: str) -> bool:
-            return name == last_used or (
-                ctx.context.current_task().level
-                >= conf.get_configuration().execution_config.max_task_depth
-                and name == self.task_generator
-            )
-
-        available = [tool for tool in self.all_tools if not forbid(tool.name)]
+            available.append(tool)
         self.tools = available
 
     def _build_new_tasks(

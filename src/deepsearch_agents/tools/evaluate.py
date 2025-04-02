@@ -51,7 +51,7 @@ async def evaluate_answer(
     curr.attempt += 1
     if (
         not curr.is_origin_query()
-        or curr.attempt > config.execution_config.max_critical_attempts
+        or curr.attempt > config.execution_config.max_evaluation
     ):
         # only evaluate the answer of the origin query
         return Evaluation(

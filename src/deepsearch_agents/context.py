@@ -62,12 +62,12 @@ _list_out_knowledge_template = """
 class Task:
     origin_query: str
     query: str
+    question_embeddings: List[float] | None = None
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:6])
     level: int = 1
     turn: int = 0
     parent: "Task | None" = None
     sub_tasks: Dict[str, "Task"] = field(default_factory=dict)
-    progress: List[str] = field(default_factory=list)
     knowledges: List[Knowledge] = field(default_factory=list)
     answer: Answer | None = None
     attempt: int = 0
@@ -109,6 +109,8 @@ class Task:
 class TaskContext:
     start_date_time: str
     tasks: Dict[str, Task] = field(default_factory=dict)
+    # todo: add URLs that are visited, and the results
+    #  also add urls available for visit
 
     def __init__(self, task: Task):
         self.tasks = {}

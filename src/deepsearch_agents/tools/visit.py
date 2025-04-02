@@ -1,7 +1,7 @@
 import asyncio
 import datetime
 import re
-from typing import List, Literal, Optional
+from typing import Dict, List, Literal, Optional
 from pydantic import BaseModel
 import requests
 
@@ -67,24 +67,18 @@ async def visit(
     results: List[PageContent | BaseException] = await asyncio.gather(
         *tasks, return_exceptions=True
     )
-    # 处理结果
+
+    availables = {}
     for url, result in zip(urls_to_process, results):
         if isinstance(result, BaseException):
             logger.error(f"Error processing URL {url}: {result}")
         elif result.warning:
-            logger.warning(
-                f"URL {url}, something wrong with the content, {result.warning}"
-            )
+            logger.warning(f"URL {url}, warning, {result.warning}")
         else:
-            knowledges.append(
-                Knowledge(
-                    reference=Reference(url=url, title=result.title),
-                    summary=f"Title: {result.title}\nDescription: {result.description}.",
-                    quotes=[result.content],
-                )
-            )
+            availables[url] = result
 
     ctx.context.current_task().knowledges.extend(knowledges)
+
     content_str = "\n".join(
         [
             f"URL: {k.reference.url}\nPublication Date: {k.reference.datetime}\nSummary: {k.summary}"
