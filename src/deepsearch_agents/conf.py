@@ -3,7 +3,7 @@ import os
 from typing import Literal
 from agents import ModelSettings
 import yaml
-
+from dotenv import load_dotenv
 from deepsearch_agents.log import logger
 
 
@@ -159,8 +159,6 @@ def get_configuration() -> Configuration:
     global config
     if config is not None:
         return config
-
-    from dotenv import load_dotenv
 
     load_dotenv()
     config = Configuration(

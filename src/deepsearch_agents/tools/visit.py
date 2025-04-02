@@ -20,6 +20,7 @@ from deepsearch_agents.tools._utils import (
     remove_markdown_link,
     tool_instructions,
 )
+from deepsearch_agents.tools.pick import pick_content
 
 
 class PageContent(BaseModel):
@@ -40,7 +41,7 @@ def visit_description(ctx: Optional[TaskContext] = None) -> str:
 tool_instructions["visit"] = visit_description
 
 
-@function_tool()
+# @function_tool()
 async def visit(
     ctx: RunContextWrapper[TaskContext],
     think: str,
@@ -61,14 +62,14 @@ async def visit(
     tasks = []
 
     for url in urls_to_process:
-        tasks.append(fetch_url(url))
+        tasks.append(fetch_url_and_pick_content(ctx, url))
 
     # 并发执行所有任务
     results: List[PageContent | BaseException] = await asyncio.gather(
         *tasks, return_exceptions=True
     )
 
-    availables = {}
+    availables: Dict[str, PageContent] = {}
     for url, result in zip(urls_to_process, results):
         if isinstance(result, BaseException):
             logger.error(f"Error processing URL {url}: {result}")
@@ -77,27 +78,35 @@ async def visit(
         else:
             availables[url] = result
 
+    for url, result in availables.items():
+        knowledges.append(
+            Knowledge(
+                reference=Reference(url=url, title=result.title),
+                quotes=[result.content],
+                summary=result.title + "\n" + result.description,
+            )
+        )
     ctx.context.current_task().knowledges.extend(knowledges)
 
     content_str = "\n".join(
         [
-            f"URL: {k.reference.url}\nPublication Date: {k.reference.datetime}\nSummary: {k.summary}"
+            f"URL: {k.reference.url}\nPublication Date: {k.reference.datetime}\nSummary: {k.summary}\nQuotes: {k.quotes[0]}"
             for k in knowledges
         ]
     )
     if len(knowledges) > 0:
         return f"""
-        Successfully visited {len(urls_to_process)} URLs, {len(knowledges)} of them contain clues to answer the question.
-        Here are the details:
-        {content_str}
+Successfully visited {len(urls_to_process)} URLs, {len(knowledges)} of them contain clues to answer the question.
+Here are the details:
+{content_str}
         """
     else:
-        return f"""
-        Try to visit {len(urls_to_process)} URLs, but found nothing useful. Maybe try another set of URLs.
-        """
+        return f"""Try to visit {len(urls_to_process)} URLs, but found nothing useful. Maybe try another set of URLs."""
 
 
-async def fetch_url(url: str) -> PageContent:
+async def fetch_url_and_pick_content(
+    ctx: RunContextWrapper[TaskContext], url: str
+) -> PageContent:
     """
     - Crawl and read full content from URLs
     """
@@ -116,11 +125,28 @@ async def fetch_url(url: str) -> PageContent:
     if not data:
         raise ValueError("No data returned from API")
     try:
+        content = remove_markdown_link(data["content"])
+        max_content_length = 5000
+        picked = await pick_content(ctx, content, max_content_length, 4)
         return PageContent(
             title=data["title"],
             description=data["description"],
-            content=remove_markdown_link(data["content"]),
+            content=picked,
             warning=data.get("warning"),
         )
     except Exception as e:
         raise ValueError(f"Error parsing data: {e}") from e
+
+
+async def main():
+    ctx = RunContextWrapper(build_task_context("spx performance"))
+    ans = await visit(
+        ctx,
+        "I want to know the capital of France",
+        ["https://www.investopedia.com/dow-jones-today-04012025-11706673"],
+    )
+    print(ans)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

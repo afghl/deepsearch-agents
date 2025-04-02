@@ -65,7 +65,7 @@ class Task:
     question_embeddings: List[float] | None = None
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:6])
     level: int = 1
-    turn: int = 0
+    turn: int = 1
     parent: "Task | None" = None
     sub_tasks: Dict[str, "Task"] = field(default_factory=dict)
     knowledges: List[Knowledge] = field(default_factory=list)

@@ -35,14 +35,6 @@ class Hooks(AgentHooks[TaskContext]):
         ctx.context.current_task().set_usage(ctx.usage)
         agent.rebuild_tools(ctx)
 
-    async def on_tool_start(
-        self,
-        ctx: RunContextWrapper[TaskContext],
-        _: Agent[TaskContext],
-        tool: Tool,
-    ) -> None:
-        ctx.context.current_task().turn += 1
-
     async def on_tool_end(
         self,
         ctx: RunContextWrapper[TaskContext],
@@ -50,6 +42,7 @@ class Hooks(AgentHooks[TaskContext]):
         tool: Tool,
         result: str,
     ) -> None:
+        ctx.context.current_task().turn += 1
         maximun = conf.get_configuration().execution_config.max_token_usage
         curr = ctx.context.current_task().usage
 

@@ -26,17 +26,6 @@ def get_tool_instructions(ctx: TaskContext, tool_names: List[str]) -> str:
     return "\n\n".join(instructions)
 
 
-def track_usage(
-    func: Callable[[RunContextWrapper[TaskContext], Any], Any],
-) -> Callable[[RunContextWrapper[TaskContext], Any], Any]:
-    def wrapper(ctx: RunContextWrapper[TaskContext], *args: Any, **kwargs: Any) -> Any:
-        result = func(ctx, *args, **kwargs)
-        ctx.usage.add(result.usage)
-        return result
-
-    return wrapper
-
-
 def log_action(
     ctx: RunContextWrapper[TaskContext],
     action: str,
