@@ -20,7 +20,8 @@ async def pick_content(
     window_step: int,
 ) -> PickResult:
     """
-    Pick the content from the content.
+    Find the most relevant section of text by comparing embeddings similarity between the task query
+    and content windows. Returns the start index and score of the best matching window.
     """
 
     curr_task = ctx.context.current_task()
