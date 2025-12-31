@@ -4,7 +4,30 @@ import asyncio
 import contextvars
 from dataclasses import dataclass, field
 import json
-from typing import List, Optional
+from typing import List, Optional, Coroutine, Any, TypeVar
+
+T = TypeVar("T")
+
+
+def _run_sync(coro: Coroutine[Any, Any, T]) -> T:
+    """Run an async coroutine synchronously.
+
+    Handles the case where we're already inside an event loop
+    (which is the case when called from Agent's instructions).
+    """
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        # No running loop, safe to use asyncio.run()
+        return asyncio.run(coro)
+    else:
+        # Already in a running loop, use nest_asyncio or create new thread
+        import concurrent.futures
+
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(asyncio.run, coro)
+            return future.result()
+
 
 from agents import (
     Agent,
@@ -110,7 +133,14 @@ Answer the question with the information available.
 def _build_instructions_and_tools(
     ctx: RunContextWrapper[TaskContext], agent: Agent[TaskContext]
 ) -> str:
-    """Build instructions with integrated memory context."""
+    """Build instructions with integrated memory context.
+
+    This function is called before each LLM call to construct the system prompt.
+    It performs:
+    1. Sync knowledge from task to knowledge store
+    2. Compress knowledge if needed (runs async code synchronously)
+    3. Build the full context with all memory components
+    """
 
     # Check if running out of tokens
     if agent._running_out_of_token(ctx):
@@ -124,6 +154,23 @@ def _build_instructions_and_tools(
     # If planner has context builder, use it to enhance instructions
     if hasattr(agent, "context_builder") and agent.context_builder is not None:
         curr = ctx.context.current_task()
+
+        # Sync knowledge from task to knowledge store
+        if hasattr(agent, "sync_knowledge_from_task"):
+            agent.sync_knowledge_from_task(curr)
+
+        # Compress knowledge if needed (run async code synchronously)
+        if hasattr(agent, "knowledge_store") and agent.knowledge_store is not None:
+            try:
+                compressed = _run_sync(
+                    agent.knowledge_store.compress_if_needed(curr.turn)
+                )
+                if compressed > 0:
+                    logger.info(
+                        f"Compressed {compressed} knowledge items before LLM call"
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to compress knowledge: {e}")
 
         # Build task state
         task_state = TaskState(

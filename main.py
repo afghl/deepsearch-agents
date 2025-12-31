@@ -59,10 +59,8 @@ class Hooks(AgentHooks[TaskContext]):
             f"total usage: {total.total_tokens} ({(total.total_tokens/maximun):.2%})."
         )
         agent.rebuild_tools(ctx, tool.name)
-
-        # Trigger knowledge compression if needed
-        if hasattr(agent, "maybe_compress_knowledge"):
-            await agent.maybe_compress_knowledge(ctx.context.current_task().turn)
+        # Note: Knowledge compression is now done in _build_instructions_and_tools
+        # before each LLM call, which is the correct place for context engineering
 
 
 async def main():
