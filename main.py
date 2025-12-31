@@ -60,6 +60,10 @@ class Hooks(AgentHooks[TaskContext]):
         )
         agent.rebuild_tools(ctx, tool.name)
 
+        # Trigger knowledge compression if needed
+        if hasattr(agent, "maybe_compress_knowledge"):
+            await agent.maybe_compress_knowledge(ctx.context.current_task().turn)
+
 
 async def main():
     config = get_configuration()

@@ -35,13 +35,15 @@ from deepsearch_agents.memory import (
 
 
 def _build_base_instructions(
-    ctx: RunContextWrapper[TaskContext], 
+    ctx: RunContextWrapper[TaskContext],
     agent: Agent[TaskContext],
 ) -> str:
     """Build the base system instructions without memory context."""
-    tool_names = "\n".join([f"{i+1}. {tool.name}" for i, tool in enumerate(agent.tools)])
+    tool_names = "\n".join(
+        [f"{i+1}. {tool.name}" for i, tool in enumerate(agent.tools)]
+    )
     curr = ctx.context.current_task()
-    
+
     if curr.query == curr.origin_query:
         question = f"The Question you are trying to answer is: {curr.query}"
     else:
@@ -88,7 +90,7 @@ Think step by step, choose the action carefully.
 def _build_low_token_instructions(ctx: RunContextWrapper[TaskContext]) -> str:
     """Build simplified instructions when running low on tokens."""
     curr = ctx.context.current_task()
-        return f"""Current Date: {ctx.context.start_date_time}
+    return f"""Current Date: {ctx.context.start_date_time}
 
 You are an advanced AI research agent from Deepsearch AI.
 
@@ -109,20 +111,20 @@ def _build_instructions_and_tools(
     ctx: RunContextWrapper[TaskContext], agent: Agent[TaskContext]
 ) -> str:
     """Build instructions with integrated memory context."""
-    
+
     # Check if running out of tokens
     if agent._running_out_of_token(ctx):
         logger.info("Running out of tokens, switching to simplified mode")
         agent.model_settings.tool_choice = "auto"
         return _build_low_token_instructions(ctx)
-    
+
     # Build base instructions
     base_instructions = _build_base_instructions(ctx, agent)
-    
+
     # If planner has context builder, use it to enhance instructions
-    if hasattr(agent, 'context_builder') and agent.context_builder is not None:
+    if hasattr(agent, "context_builder") and agent.context_builder is not None:
         curr = ctx.context.current_task()
-        
+
         # Build task state
         task_state = TaskState(
             origin_query=curr.origin_query,
@@ -136,9 +138,9 @@ def _build_instructions_and_tools(
                 if st.answer and st.answer.answer
             ],
         )
-        
+
         return agent.context_builder.build_full_context(task_state, base_instructions)
-    
+
     return base_instructions
 
 
@@ -146,7 +148,7 @@ def _build_instructions_and_tools(
 class Planner(Agent[TaskContext]):
     """
     A Planner agent that manages task planning and execution with memory.
-    
+
     The Planner is responsible for:
     - Breaking down complex tasks into subtasks
     - Managing the execution flow and coordinating tool usage
@@ -156,17 +158,17 @@ class Planner(Agent[TaskContext]):
 
     task_generator: str | None = None
     """Optional string identifier for the task generation tool."""
-    
+
     # Memory components
     knowledge_store: Optional[KnowledgeStore] = None
     """Hierarchical knowledge storage with compression."""
-    
+
     scratchpad: Optional[Scratchpad] = None
     """Action history tracking."""
-    
+
     context_builder: Optional[ContextBuilder] = None
     """Context construction with budget management."""
-    
+
     _compressor: Optional[KnowledgeCompressor] = None
     """LLM-based knowledge compressor."""
 
@@ -196,7 +198,7 @@ class Planner(Agent[TaskContext]):
         if task_generator:
             self._build_task_generate_tool()
         self.all_tools = self.tools  # type: ignore
-        
+
         # Initialize memory components if enabled
         if enable_memory:
             self._init_memory(knowledge_config, scratchpad_config, context_budget)
@@ -211,35 +213,33 @@ class Planner(Agent[TaskContext]):
         self.knowledge_store = KnowledgeStore(
             config=knowledge_config or KnowledgeStoreConfig()
         )
-        self.scratchpad = Scratchpad(
-            config=scratchpad_config or ScratchpadConfig()
-        )
+        self.scratchpad = Scratchpad(config=scratchpad_config or ScratchpadConfig())
         self.context_builder = ContextBuilder(
             knowledge_store=self.knowledge_store,
             scratchpad=self.scratchpad,
             budget=context_budget or ContextBudget(),
         )
-        
+
         # Initialize compressor and wire it to knowledge store
         self._compressor = KnowledgeCompressor(model="summarize")
         self.knowledge_store.set_compressor(self._compressor.create_compressor_func())
-        
+
         logger.info(f"Memory components initialized for {self.name}")
 
     def sync_knowledge_from_task(self, task: Task) -> int:
         """Sync knowledge from task context to knowledge store.
-        
+
         This converts the legacy Knowledge format to ManagedKnowledge.
-        
+
         Args:
             task: The task to sync knowledge from.
-            
+
         Returns:
             Number of knowledge items synced.
         """
         if not self.knowledge_store:
             return 0
-        
+
         synced = 0
         for knowledge in task.knowledges:
             managed = ManagedKnowledge(
@@ -253,15 +253,34 @@ class Planner(Agent[TaskContext]):
             )
             self.knowledge_store.add(managed)
             synced += 1
-        
+
         return synced
+
+    async def maybe_compress_knowledge(self, current_turn: int = 0) -> int:
+        """Trigger knowledge compression if needed.
+
+        Should be called from Hooks.on_tool_end after each tool execution.
+
+        Args:
+            current_turn: Current turn number for priority calculation.
+
+        Returns:
+            Number of items compressed.
+        """
+        if not self.knowledge_store:
+            return 0
+
+        compressed = await self.knowledge_store.compress_if_needed(current_turn)
+        if compressed > 0:
+            logger.info(f"Compressed {compressed} knowledge items")
+        return compressed
 
     def rebuild_tools(
         self, ctx: RunContextWrapper[TaskContext], last_used: str | None = None
     ) -> None:
         """
         Update available tools based on current context.
-        
+
         Excludes:
         - The last used tool (to avoid immediate repetition)
         - Task generator if depth limit reached
@@ -271,19 +290,19 @@ class Planner(Agent[TaskContext]):
         if self.knowledge_store:
             curr = ctx.context.current_task()
             self.sync_knowledge_from_task(curr)
-        
+
         if self._running_out_of_token(ctx):
             self.tools = [tool for tool in self.all_tools if tool.name == "answer"]
             return
-        
+
         config = conf.get_configuration().execution_config
         available = []
-        
+
         for tool in self.all_tools:
             # Skip last used tool
             if tool.name == last_used:
                 continue
-            
+
             # Check task generator conditions
             if tool.name == self.task_generator:
                 curr = ctx.context.current_task()
@@ -293,7 +312,7 @@ class Planner(Agent[TaskContext]):
                     continue
 
             available.append(tool)
-        
+
         self.tools = available
 
     def _build_new_tasks(
@@ -304,7 +323,7 @@ class Planner(Agent[TaskContext]):
         tasks = []
         question_list = result.split(sep)
         curr = ctx.context.current_task()
-        
+
         if isinstance(question_list, str):
             question_list = json.loads(question_list)
 
@@ -318,20 +337,18 @@ class Planner(Agent[TaskContext]):
                 parent=curr,
             )
             cnt += 1
-            logger.info(
-                f"Created sub-task: {sub_task.id} for query: {q[:50]}..."
-            )
+            logger.info(f"Created sub-task: {sub_task.id} for query: {q[:50]}...")
             curr.sub_tasks[sub_task.id] = sub_task
             ctx.context.tasks[sub_task.id] = sub_task
             tasks.append(sub_task)
-        
+
         # Record in scratchpad
         if self.scratchpad:
             self.scratchpad.record_reflect(
                 questions=[t.query for t in tasks],
                 turn=curr.turn,
             )
-        
+
         return tasks
 
     @property
@@ -344,25 +361,22 @@ class Planner(Agent[TaskContext]):
 
     def _build_task_generate_tool(self) -> None:
         """Wrap the task generator tool to execute sub-tasks."""
-        tool = next(
-            (t for t in self.tools if t.name == self.task_generator), 
-            None
-        )
+        tool = next((t for t in self.tools if t.name == self.task_generator), None)
         if not tool:
             return
-        
-        assert isinstance(tool, FunctionTool), (
-            f"Task generator tool {self.task_generator} must be a FunctionTool"
-        )
+
+        assert isinstance(
+            tool, FunctionTool
+        ), f"Task generator tool {self.task_generator} must be a FunctionTool"
 
         async def execute_task(ctx: RunContextWrapper[TaskContext], input: str) -> str:
             ret = await tool.on_invoke_tool(ctx, input)
             if not ret:
                 return "No new tasks generated."
-            
+
             tasks = self._build_new_tasks(ctx, ret)
             await asyncio.gather(*[self._execute_sub_task(ctx, task) for task in tasks])
-            
+
             results = []
             for task in tasks:
                 if task.solved():
@@ -375,7 +389,7 @@ class Planner(Agent[TaskContext]):
                         f"For Question: {task.query}\n"
                         f"Could not find sufficient information."
                     )
-            
+
             return "\n\n".join(results)
 
         # Replace original tool with wrapped version
@@ -397,7 +411,7 @@ class Planner(Agent[TaskContext]):
 
         async def run():
             new_task.set_as_current()
-            
+
             # Create sub-planner (without memory to avoid duplication)
             sub_planner = Planner(
                 name=f"DeepSearch Agent-{new_task.id}",
@@ -408,7 +422,7 @@ class Planner(Agent[TaskContext]):
                 model_settings=self.model_settings,
                 enable_memory=False,  # Sub-tasks don't need separate memory
             )
-            
+
             try:
                 await Runner.run(
                     starting_agent=sub_planner,
@@ -426,13 +440,13 @@ class Planner(Agent[TaskContext]):
 
     def get_memory_stats(self) -> dict:
         """Get statistics about memory usage.
-        
+
         Returns:
             Dictionary with memory component statistics.
         """
         if not self.context_builder:
             return {"memory_enabled": False}
-        
+
         return {
             "memory_enabled": True,
             **self.context_builder.stats(),
